@@ -88,6 +88,7 @@ class modSAWeeklyReport extends DolibarrModules
 			array('SAWEEKLYREPORT_MEETING_DURATION', 'chaine', '15', 'Meeting duration in minutes', 0, 'current', 1),
 			array('SAWEEKLYREPORT_PREFILL_FICHINTER', 'chaine', '1', 'Prefill interventions', 0, 'current', 1),
 			array('SAWEEKLYREPORT_PREFILL_TICKET', 'chaine', '1', 'Prefill tickets', 0, 'current', 1),
+			array('SAWEEKLYREPORT_TICKET_TYPE_CODES', 'chaine', '', 'Ticket request types to prefill', 0, 'current', 1),
 			array('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', 'chaine', 'Rappel : port du harnais obligatoire en toiture. Pas de précipitation en fin de chantier.', 'Default safety message', 0, 'current', 1),
 			array('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'chaine', 'Pour rappel : réaliser le chargement des véhicules la veille du chantier.', 'Default loading reminder', 0, 'current', 1),
 			array('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_CREATE', 'chaine', '1', 'Agenda event for weekly report creation', 0, 'current', 1),
@@ -247,6 +248,9 @@ class modSAWeeklyReport extends DolibarrModules
 		if ($result < 0) {
 			return -1;
 		}
+		if ($this->upgradeSchema() < 0) {
+			return -1;
+		}
 
 		$this->remove($options);
 		if ($this->syncMulticompanySharingDefinition(true) < 0) {
@@ -267,6 +271,37 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->syncMulticompanySharingDefinition(false);
 
 		return $this->_remove(array(), $options);
+	}
+
+	/**
+	 * Apply idempotent schema changes for existing installations.
+	 *
+	 * @return	int
+	 */
+	private function upgradeSchema()
+	{
+		$table = $this->db->prefix().'saweeklyreport_weeklyreportservice';
+		$columns = array(
+			'ticket_category_code' => "varchar(32) DEFAULT NULL AFTER service_type",
+			'ticket_severity_code' => "varchar(32) DEFAULT NULL AFTER ticket_category_code",
+		);
+
+		foreach ($columns as $column => $definition) {
+			$sql = "SHOW COLUMNS FROM ".$table." LIKE '".$this->db->escape($column)."'";
+			$resql = $this->db->query($sql);
+			if (!$resql) {
+				return -1;
+			}
+			if ($this->db->num_rows($resql) <= 0) {
+				$result = $this->db->query("ALTER TABLE ".$table." ADD COLUMN ".$column." ".$definition);
+				if (!$result) {
+					return -1;
+				}
+			}
+			$this->db->free($resql);
+		}
+
+		return 1;
 	}
 
 	/**

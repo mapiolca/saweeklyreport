@@ -32,9 +32,12 @@ if (!$res) {
 require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/ajax.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formticket.class.php';
+dol_include_once('/ticket/class/ticket.class.php');
+dol_include_once('/saweeklyreport/class/saweeklyreporttickethelper.class.php');
 require_once '../lib/saweeklyreport.lib.php';
 
-$langs->loadLangs(array('admin', 'saweeklyreport@saweeklyreport'));
+$langs->loadLangs(array('admin', 'ticket', 'saweeklyreport@saweeklyreport'));
 
 if (empty($user->admin)) {
 	accessforbidden();
@@ -59,6 +62,11 @@ if ($action === 'updatesettings') {
 		'SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE' => GETPOST('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', 'restricthtml'),
 		'SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER' => GETPOST('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'restricthtml'),
 	);
+	if (isModEnabled('ticket')) {
+		$settings['SAWEEKLYREPORT_TICKET_TYPE_CODES'] = implode(',', SAWeeklyReportTicketHelper::cleanTicketDictionaryCodes($db, GETPOST('SAWEEKLYREPORT_TICKET_TYPE_CODES', 'array'), 'c_ticket_type'));
+	} else {
+		$settings['SAWEEKLYREPORT_TICKET_TYPE_CODES'] = getDolGlobalString('SAWEEKLYREPORT_TICKET_TYPE_CODES');
+	}
 
 	$error = 0;
 	foreach ($settings as $key => $value) {
@@ -108,6 +116,15 @@ print '</td></tr>';
 print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportPrefillSettings').'</th></tr>';
 print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPrefillFichinter').'</td><td>'.ajax_constantonoff('SAWEEKLYREPORT_PREFILL_FICHINTER', array(), (int) $conf->entity).'</td></tr>';
 print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPrefillTicket').'</td><td>'.ajax_constantonoff('SAWEEKLYREPORT_PREFILL_TICKET', array(), (int) $conf->entity).'</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportTicketTypesToPrefill').'</td><td>';
+if (isModEnabled('ticket')) {
+	$formticket = new FormTicket($db);
+	$formticket->selectTypesTickets(getDolGlobalString('SAWEEKLYREPORT_TICKET_TYPE_CODES'), 'SAWEEKLYREPORT_TICKET_TYPE_CODES', '', 2, 0, 1, 0, 'minwidth300 maxwidth500', 1);
+	print ' <span class="opacitymedium">'.$langs->trans('SAWeeklyReportTicketTypesToPrefillHelp').'</span>';
+} else {
+	print '<span class="opacitymedium">'.$langs->trans('RequiresTicket').'</span>';
+}
+print '</td></tr>';
 print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportAgendaSettings').'</th></tr>';
 if (isModEnabled('agenda')) {
 	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaCreate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_CREATE', array(), (int) $conf->entity).'</td></tr>';

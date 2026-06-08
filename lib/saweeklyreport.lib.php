@@ -176,3 +176,77 @@ function saweeklyreportAdminModuleListLink()
 		.img_picto($langs->trans('BackToModuleList'), 'back', 'class="pictofixedwidth"')
 		.'<span class="hideonsmartphone">'.$langs->trans('BackToModuleList').'</span></a>';
 }
+
+/**
+ * Build native "link to object" controls for sources that are not thirdparty scoped.
+ *
+ * @param	CommonObject	$object				Object
+ * @param	int			$permissiontoadd	Can add links
+ * @return	array{linktoelem:string,htmltoenteralink:string}
+ */
+function saweeklyreportBuildNativeSourceLinkBlock($object, $permissiontoadd)
+{
+	global $conf, $langs, $user;
+
+	$result = array('linktoelem' => '', 'htmltoenteralink' => '');
+	if (empty($permissiontoadd) || empty($object->id) || getDolGlobalString('MAIN_HIDE_LINK_BY_REF_IN_LINKTO')) {
+		return $result;
+	}
+
+	$possiblelinks = array();
+	if (isModEnabled('ticket') && is_object($user) && $user->hasRight('ticket', 'read')) {
+		$possiblelinks['ticket'] = 'LinkToTicket';
+	}
+	if (isModEnabled('intervention') && is_object($user) && $user->hasRight('ficheinter', 'lire')) {
+		$possiblelinks['fichinter'] = 'LinkToIntervention';
+	}
+	if (empty($possiblelinks)) {
+		return $result;
+	}
+
+	$linktoelemlist = '';
+	$htmltoenteralink = '';
+	foreach ($possiblelinks as $element => $labelkey) {
+		$domid = 'saweeklyreport_'.$element.'list';
+		$htmltoenteralink .= '<div id="'.dol_escape_htmltag($domid).'"'.(empty($conf->use_javascript_ajax) ? '' : ' style="display:none"').'>';
+		$htmltoenteralink .= '<br>'."\n";
+		$htmltoenteralink .= '<!-- form to add a native source link by reference -->'."\n";
+		$htmltoenteralink .= '<form action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'" method="POST" name="formlinkedbyref'.$element.'">';
+		$htmltoenteralink .= '<input type="hidden" name="token" value="'.newToken().'">';
+		$htmltoenteralink .= '<input type="hidden" name="action" value="addlinkbyref">';
+		$htmltoenteralink .= '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+		$htmltoenteralink .= '<input type="hidden" name="addlink" value="'.dol_escape_htmltag($element).'">';
+		$htmltoenteralink .= '<table class="noborder">';
+		$htmltoenteralink .= '<tr class="liste_titre">';
+		$htmltoenteralink .= '<td class="center"><input type="text" placeholder="'.dol_escape_htmltag($langs->trans('Ref')).'" name="reftolinkto" value="'.dol_escape_htmltag(GETPOST('reftolinkto', 'alpha')).'">&nbsp;';
+		$htmltoenteralink .= '<input type="submit" class="button smallpaddingimp valignmiddle" value="'.$langs->trans('ToLink').'">&nbsp;';
+		$htmltoenteralink .= '<input type="submit" class="button smallpaddingimp" name="cancel" value="'.$langs->trans('Cancel').'"></td>';
+		$htmltoenteralink .= '</tr>';
+		$htmltoenteralink .= '</table>';
+		$htmltoenteralink .= '</form>';
+		$htmltoenteralink .= '</div>';
+
+		$linktoelemlist .= '<li><a href="#linkto'.$element.'" class="saweeklyreportlinkto dropdowncloseonclick" rel="'.dol_escape_htmltag($domid).'">'.$langs->trans($labelkey).'</a></li>';
+	}
+
+	$linktoelem = '<dl class="dropdown" id="saweeklyreportlinktoobjectname">';
+	if (!empty($conf->use_javascript_ajax)) {
+		$linktoelem .= '<dt><a href="#saweeklyreportlinktoobjectname"><span class="fas fa-link paddingrightonly"></span>'.$langs->trans('LinkTo').'...</a></dt>';
+	}
+	$linktoelem .= '<dd><div class="multiselectlinkto"><ul class="ulselectedfields">'.$linktoelemlist.'</ul></div></dd></dl>';
+
+	if (!empty($conf->use_javascript_ajax)) {
+		$htmltoenteralink .= '<script nonce="'.getNonce().'">
+			jQuery(document).ready(function() {
+				jQuery(".saweeklyreportlinkto").click(function() {
+					jQuery("#"+jQuery(this).attr("rel")).toggle();
+				});
+			});
+		</script>';
+	}
+
+	$result['linktoelem'] = $linktoelem;
+	$result['htmltoenteralink'] = $htmltoenteralink;
+
+	return $result;
+}

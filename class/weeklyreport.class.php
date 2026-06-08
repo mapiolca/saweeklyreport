@@ -4,6 +4,7 @@
 require_once DOL_DOCUMENT_ROOT.'/core/class/commonobject.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once __DIR__.'/weeklyreportservice.class.php';
+require_once __DIR__.'/saweeklyreporttickethelper.class.php';
 
 /**
  * Weekly operational report.
@@ -534,6 +535,9 @@ class WeeklyReport extends CommonObject
 		}
 
 		$this->db->commit();
+		if ($this->linkNativeSources($services, $user) < 0) {
+			return -1;
+		}
 		$this->fetch((int) $this->id);
 
 		return 1;
@@ -565,6 +569,8 @@ class WeeklyReport extends CommonObject
 			$line->source_element = (string) $service['source_element'];
 			$line->source_id = (int) $service['source_id'];
 			$line->service_type = (string) $service['service_type'];
+			$line->ticket_category_code = (string) ($service['ticket_category_code'] ?? '');
+			$line->ticket_severity_code = (string) ($service['ticket_severity_code'] ?? '');
 			$line->label = (string) $service['label'];
 			$line->description = (string) $service['description'];
 			$line->status = (int) $service['status'];
@@ -578,6 +584,56 @@ class WeeklyReport extends CommonObject
 		}
 
 		return 1;
+	}
+
+	/**
+	 * Link native source objects to the report.
+	 *
+	 * @param	array<int,array<string,mixed>>	$services	Services
+	 * @param	User							$user		User
+	 * @return	int
+	 */
+	private function linkNativeSources($services, User $user)
+	{
+		foreach ($services as $service) {
+			$sourceelement = (string) ($service['source_element'] ?? '');
+			$sourceid = (int) ($service['source_id'] ?? 0);
+			if ($sourceid <= 0 || !in_array($sourceelement, array('ticket', 'fichinter'), true)) {
+				continue;
+			}
+			if ($this->isNativeSourceLinked($sourceelement, $sourceid)) {
+				continue;
+			}
+			$result = $this->add_object_linked($sourceelement, $sourceid, $user, 1);
+			if ($result <= 0) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+		}
+
+		return 1;
+	}
+
+	/**
+	 * Check if a native source is already linked to this report.
+	 *
+	 * @param	string	$sourceelement	Source element
+	 * @param	int		$sourceid		Source id
+	 * @return	bool
+	 */
+	private function isNativeSourceLinked($sourceelement, $sourceid)
+	{
+		$targettype = $this->getElementType();
+
+		$sql = "SELECT rowid FROM ".$this->db->prefix()."element_element";
+		$sql .= " WHERE (fk_source = ".((int) $sourceid)." AND sourcetype = '".$this->db->escape($sourceelement)."'";
+		$sql .= " AND fk_target = ".((int) $this->id)." AND targettype = '".$this->db->escape($targettype)."')";
+		$sql .= " OR (fk_source = ".((int) $this->id)." AND sourcetype = '".$this->db->escape($targettype)."'";
+		$sql .= " AND fk_target = ".((int) $sourceid)." AND targettype = '".$this->db->escape($sourceelement)."')";
+
+		$resql = $this->db->query($sql);
+
+		return ($resql && $this->db->num_rows($resql) > 0);
 	}
 
 	/**
@@ -728,6 +784,8 @@ class WeeklyReport extends CommonObject
 						'source_element' => 'fichinter',
 						'source_id' => (int) $obj->rowid,
 						'service_type' => 'maintenance',
+						'ticket_category_code' => '',
+						'ticket_severity_code' => '',
 						'label' => trim('Maintenance : '.$obj->ref),
 						'description' => $this->textFromHtml((string) $obj->description),
 						'status' => (int) $obj->fk_statut,
@@ -738,11 +796,19 @@ class WeeklyReport extends CommonObject
 		}
 
 		if (getDolGlobalInt('SAWEEKLYREPORT_PREFILL_TICKET', 1) && isModEnabled('ticket') && is_object($user) && $user->hasRight('ticket', 'read') && $this->tableExists('ticket')) {
-			$sql = "SELECT rowid, ref, subject, message, datec, fk_statut";
+			$tickettypecodes = SAWeeklyReportTicketHelper::cleanTicketDictionaryCodes($this->db, getDolGlobalString('SAWEEKLYREPORT_TICKET_TYPE_CODES'), 'c_ticket_type');
+			$sql = "SELECT rowid, ref, subject, message, datec, fk_statut, type_code, category_code, severity_code";
 			$sql .= " FROM ".$this->db->prefix()."ticket";
 			$sql .= " WHERE entity IN (".getEntity('ticket').")";
 			$sql .= " AND datec >= '".$this->db->escape($start)."'";
 			$sql .= " AND datec < '".$this->db->escape($endnext)."'";
+			if (!empty($tickettypecodes)) {
+				$quotedtypes = array();
+				foreach ($tickettypecodes as $tickettypecode) {
+					$quotedtypes[] = "'".$this->db->escape($tickettypecode)."'";
+				}
+				$sql .= " AND type_code IN (".implode(',', $quotedtypes).")";
+			}
 			$sql .= " ORDER BY datec ASC, ref ASC";
 			$resql = $this->db->query($sql);
 			if ($resql) {
@@ -751,7 +817,9 @@ class WeeklyReport extends CommonObject
 					$services[] = array(
 						'source_element' => 'ticket',
 						'source_id' => (int) $obj->rowid,
-						'service_type' => 'troubleshooting',
+						'service_type' => (string) $obj->type_code,
+						'ticket_category_code' => (string) $obj->category_code,
+						'ticket_severity_code' => (string) $obj->severity_code,
 						'label' => trim('Dépannage : '.($subject !== '' ? $subject : $obj->ref)),
 						'description' => $this->textFromHtml((string) $obj->message),
 						'status' => (int) $obj->fk_statut,

@@ -22,6 +22,8 @@ class WeeklyReportService extends CommonObject
 		'source_element' => array('type' => 'varchar(64)', 'label' => 'SourceElement', 'enabled' => 1, 'position' => 20, 'notnull' => 0, 'visible' => 1),
 		'source_id' => array('type' => 'integer', 'label' => 'SourceID', 'enabled' => 1, 'position' => 21, 'notnull' => 0, 'visible' => 1),
 		'service_type' => array('type' => 'varchar(64)', 'label' => 'WeeklyReportServiceType', 'enabled' => 1, 'position' => 30, 'notnull' => 0, 'visible' => 1),
+		'ticket_category_code' => array('type' => 'varchar(32)', 'label' => 'WeeklyReportTicketGroup', 'enabled' => 1, 'position' => 31, 'notnull' => 0, 'visible' => 1),
+		'ticket_severity_code' => array('type' => 'varchar(32)', 'label' => 'WeeklyReportTicketSeverity', 'enabled' => 1, 'position' => 32, 'notnull' => 0, 'visible' => 1),
 		'label' => array('type' => 'varchar(255)', 'label' => 'Label', 'enabled' => 1, 'position' => 40, 'notnull' => 1, 'visible' => 1, 'css' => 'minwidth300', 'searchall' => 1),
 		'description' => array('type' => 'text', 'label' => 'Description', 'enabled' => 1, 'position' => 50, 'notnull' => 0, 'visible' => 3),
 		'status' => array('type' => 'integer', 'label' => 'Status', 'enabled' => 1, 'position' => 60, 'notnull' => 0, 'visible' => 1),
@@ -39,6 +41,8 @@ class WeeklyReportService extends CommonObject
 	public $source_element;
 	public $source_id;
 	public $service_type;
+	public $ticket_category_code;
+	public $ticket_severity_code;
 	public $label;
 	public $description;
 	public $status;
@@ -111,5 +115,39 @@ class WeeklyReportService extends CommonObject
 	public function delete(User $user, $notrigger = 0)
 	{
 		return $this->deleteCommon($user, $notrigger);
+	}
+
+	/**
+	 * Return source object native link.
+	 *
+	 * @param	int	$withpicto	Include picto
+	 * @return	string
+	 */
+	public function getSourceNomUrl($withpicto = 1)
+	{
+		global $user;
+
+		$sourceelement = (string) $this->source_element;
+		$sourceid = (int) $this->source_id;
+		if ($sourceelement === 'ticket' && $sourceid > 0 && isModEnabled('ticket') && is_object($user) && $user->hasRight('ticket', 'read')) {
+			dol_include_once('/ticket/class/ticket.class.php');
+			if (class_exists('Ticket')) {
+				$ticket = new Ticket($this->db);
+				if ($ticket->fetch($sourceid) > 0) {
+					return $ticket->getNomUrl($withpicto);
+				}
+			}
+		}
+		if ($sourceelement === 'fichinter' && $sourceid > 0 && isModEnabled('intervention') && is_object($user) && $user->hasRight('ficheinter', 'lire')) {
+			dol_include_once('/fichinter/class/fichinter.class.php');
+			if (class_exists('Fichinter')) {
+				$fichinter = new Fichinter($this->db);
+				if ($fichinter->fetch($sourceid) > 0) {
+					return $fichinter->getNomUrl($withpicto);
+				}
+			}
+		}
+
+		return dol_escape_htmltag($sourceelement.($sourceid > 0 ? ' #'.$sourceid : ''));
 	}
 }

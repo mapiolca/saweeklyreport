@@ -9,6 +9,8 @@ CREATE TABLE llx_saweeklyreport_weeklyreportservice(
 	source_element varchar(64),
 	source_id integer,
 	service_type varchar(64),
+	ticket_category_code varchar(32),
+	ticket_severity_code varchar(32),
 	label varchar(255) NOT NULL,
 	description text,
 	status integer DEFAULT 0,

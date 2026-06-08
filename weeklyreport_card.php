@@ -34,11 +34,13 @@ if (!$res) {
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/ajax.lib.php';
 dol_include_once('/saweeklyreport/class/weeklyreport.class.php');
 dol_include_once('/saweeklyreport/class/weeklyreportservice.class.php');
+dol_include_once('/saweeklyreport/class/saweeklyreporttickethelper.class.php');
 dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
 
-$langs->loadLangs(array('saweeklyreport@saweeklyreport', 'other', 'agenda', 'mails'));
+$langs->loadLangs(array('saweeklyreport@saweeklyreport', 'other', 'agenda', 'mails', 'ticket', 'interventions'));
 
 $id = GETPOSTINT('id');
 $ref = GETPOST('ref', 'alphanohtml');
@@ -93,6 +95,9 @@ if (empty($reshook)) {
 	if ($object->id > 0) {
 		$usercangeneratedoc = $permissiontogeneratedoc;
 		$permissiondellink = $permissiontoadd;
+		if (in_array($action, array('addlink', 'addlinkbyref', 'dellink'), true) && !$tokenok) {
+			accessforbidden('Invalid token');
+		}
 		include DOL_DOCUMENT_ROOT.'/core/actions_dellink.inc.php';
 		include DOL_DOCUMENT_ROOT.'/core/actions_builddoc.inc.php';
 	}
@@ -109,7 +114,7 @@ if (empty($reshook)) {
 		$year = GETPOSTINT('year');
 		$week = GETPOSTINT('week');
 		if ($year < 2000 || $week < 1 || $week > 53) {
-			setEventMessages($langs->trans('ErrorFieldRequired', $langs->trans('Week')), null, 'errors');
+			setEventMessages($langs->transnoentitiesnoconv('ErrorFieldRequired', $langs->transnoentitiesnoconv('Week')), null, 'errors');
 			$action = 'create';
 		} else {
 			$existing = new WeeklyReport($db);
@@ -166,22 +171,58 @@ if (empty($reshook)) {
 		$lineids = GETPOST('lineid', 'array:int');
 		$labels = GETPOST('service_label', 'array');
 		$types = GETPOST('service_type', 'array');
+		$categories = GETPOST('ticket_category_code', 'array');
+		$severities = GETPOST('ticket_severity_code', 'array');
 		$descriptions = GETPOST('service_description', 'array');
 		$error = 0;
+		$errors = array();
 		foreach ((array) $lineids as $index => $lineid) {
 			$line = new WeeklyReportService($db);
 			if ($line->fetch((int) $lineid) > 0 && (int) $line->fk_weeklyreport === (int) $object->id) {
 				$line->label = dol_string_nohtmltag((string) ($labels[$index] ?? ''));
-				$line->service_type = dol_string_nohtmltag((string) ($types[$index] ?? ''));
+				if ((string) $line->source_element === 'ticket') {
+					$rawtype = dol_string_nohtmltag((string) ($types[$index] ?? ''));
+					$rawcategory = dol_string_nohtmltag((string) ($categories[$index] ?? ''));
+					$rawseverity = dol_string_nohtmltag((string) ($severities[$index] ?? ''));
+					$cleantype = SAWeeklyReportTicketHelper::cleanTicketDictionaryCode($db, $rawtype, 'c_ticket_type');
+					$cleancategory = SAWeeklyReportTicketHelper::cleanTicketDictionaryCode($db, $rawcategory, 'c_ticket_category');
+					$cleanseverity = SAWeeklyReportTicketHelper::cleanTicketDictionaryCode($db, $rawseverity, 'c_ticket_severity');
+					if ($rawtype !== '' && $cleantype === '') {
+						$error++;
+						$errors[] = $langs->transnoentitiesnoconv('SAWeeklyReportInvalidTicketType', $rawtype);
+						continue;
+					}
+					if ($rawcategory !== '' && $cleancategory === '') {
+						$error++;
+						$errors[] = $langs->transnoentitiesnoconv('SAWeeklyReportInvalidTicketGroup', $rawcategory);
+						continue;
+					}
+					if ($rawseverity !== '' && $cleanseverity === '') {
+						$error++;
+						$errors[] = $langs->transnoentitiesnoconv('SAWeeklyReportInvalidTicketSeverity', $rawseverity);
+						continue;
+					}
+					$line->service_type = $cleantype;
+					$line->ticket_category_code = $cleancategory;
+					$line->ticket_severity_code = $cleanseverity;
+				} else {
+					$line->service_type = dol_string_nohtmltag((string) ($types[$index] ?? ''));
+					$line->ticket_category_code = '';
+					$line->ticket_severity_code = '';
+				}
 				$line->description = dol_string_nohtmltag((string) ($descriptions[$index] ?? ''));
 				$line->position = $index + 1;
 				if ($line->update($user, 1) < 0) {
 					$error++;
+					if (!empty($line->error)) {
+						$errors[] = $line->error;
+					}
+					$errors = array_merge($errors, (array) $line->errors);
 				}
 			}
 		}
 		if ($error) {
-			setEventMessages($langs->trans('Error'), null, 'errors');
+			setEventMessages($langs->trans('Error'), $errors, 'errors');
 		} else {
 			setEventMessages($langs->trans('RecordSaved'), null, 'mesgs');
 		}
@@ -201,7 +242,7 @@ if (empty($reshook)) {
 		$line->description = GETPOST('new_service_description', 'restricthtml');
 		$line->position = count($object->lines) + 1;
 		if ($line->label === '' || $line->create($user, 1) < 0) {
-			setEventMessages($line->error ?: $langs->trans('ErrorFieldRequired', $langs->trans('Label')), $line->errors, 'errors');
+			setEventMessages($line->error ?: $langs->transnoentitiesnoconv('ErrorFieldRequired', $langs->transnoentitiesnoconv('Label')), $line->errors, 'errors');
 		}
 		header('Location: '.dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?id='.(int) $object->id);
 		exit;
@@ -393,21 +434,46 @@ if ($action === 'create') {
 		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
 	}
 	print '<table class="noborder centpercent">';
-	print '<tr class="liste_titre"><th>'.$langs->trans('Type').'</th><th>'.$langs->trans('Label').'</th><th>'.$langs->trans('Description').'</th><th>'.$langs->trans('Source').'</th><th></th></tr>';
+	print '<tr class="liste_titre"><th>'.$langs->trans('Type').'</th><th>'.$langs->trans('WeeklyReportTicketGroup').'</th><th>'.$langs->trans('WeeklyReportTicketSeverity').'</th><th>'.$langs->trans('Label').'</th><th>'.$langs->trans('Description').'</th><th>'.$langs->trans('Origin').'</th><th></th></tr>';
 	foreach ($object->lines as $index => $line) {
+		$isticketline = ((string) $line->source_element === 'ticket');
 		print '<tr class="oddeven">';
 		print '<td>';
 		if ($permissiontoadd) {
 			print '<input type="hidden" name="lineid[]" value="'.((int) $line->id).'">';
-			print '<input class="flat maxwidth150" name="service_type[]" value="'.dol_escape_htmltag($line->service_type).'">';
+			if ($isticketline) {
+				print SAWeeklyReportTicketHelper::selectTicketDictionary($db, $langs, 'c_ticket_type', (string) $line->service_type, 'service_type[]', 'service_type_'.((int) $line->id), 'maxwidth150', true);
+			} else {
+				print '<input class="flat maxwidth150" name="service_type[]" value="'.dol_escape_htmltag($line->service_type).'">';
+			}
 		} else {
-			print dol_escape_htmltag($line->service_type);
+			print dol_escape_htmltag($isticketline ? SAWeeklyReportTicketHelper::getTicketDictionaryLabel($db, $langs, 'c_ticket_type', (string) $line->service_type) : (string) $line->service_type);
+		}
+		print '</td><td>';
+		if ($isticketline) {
+			if ($permissiontoadd) {
+				print SAWeeklyReportTicketHelper::selectTicketDictionary($db, $langs, 'c_ticket_category', (string) $line->ticket_category_code, 'ticket_category_code[]', 'ticket_category_code_'.((int) $line->id), 'maxwidth150', true);
+			} else {
+				print dol_escape_htmltag(SAWeeklyReportTicketHelper::getTicketDictionaryLabel($db, $langs, 'c_ticket_category', (string) $line->ticket_category_code));
+			}
+		} elseif ($permissiontoadd) {
+			print '<input type="hidden" name="ticket_category_code[]" value="">';
+		}
+		print '</td><td>';
+		if ($isticketline) {
+			if ($permissiontoadd) {
+				print SAWeeklyReportTicketHelper::selectTicketDictionary($db, $langs, 'c_ticket_severity', (string) $line->ticket_severity_code, 'ticket_severity_code[]', 'ticket_severity_code_'.((int) $line->id), 'maxwidth150', true);
+			} else {
+				print dol_escape_htmltag(SAWeeklyReportTicketHelper::getTicketDictionaryLabel($db, $langs, 'c_ticket_severity', (string) $line->ticket_severity_code));
+			}
+		} elseif ($permissiontoadd) {
+			print '<input type="hidden" name="ticket_severity_code[]" value="">';
 		}
 		print '</td><td>';
 		print ($permissiontoadd ? '<input class="flat minwidth200" name="service_label[]" value="'.dol_escape_htmltag($line->label).'">' : dol_escape_htmltag($line->label));
 		print '</td><td>';
 		print ($permissiontoadd ? '<textarea class="flat centpercent" rows="2" name="service_description[]">'.dol_escape_htmltag($line->description).'</textarea>' : dol_nl2br(dol_escape_htmltag($line->description)));
-		print '</td><td>'.dol_escape_htmltag($line->source_element).($line->source_id ? ' #'.((int) $line->source_id) : '').'</td><td class="right">';
+		print '</td><td>'.$line->getSourceNomUrl(1).'</td><td class="right">';
 		if ($permissiontoadd) {
 			print '<a class="reposition" href="'.$cardurl.'?id='.((int) $object->id).'&action=deleteserviceline&lineid='.((int) $line->id).'&token='.newToken().'">'.img_delete().'</a>';
 		}
@@ -423,7 +489,7 @@ if ($action === 'create') {
 		print '<input type="hidden" name="action" value="addserviceline">';
 		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
 		print '<table class="noborder centpercent">';
-		print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('Add').'</td><td><input class="flat maxwidth150" name="new_service_type" placeholder="'.$langs->trans('Type').'"></td><td><input class="flat minwidth300" name="new_service_label" placeholder="'.$langs->trans('Label').'"></td><td><input class="flat minwidth300" name="new_service_description" placeholder="'.$langs->trans('Description').'"></td><td><input type="submit" class="button small" value="'.$langs->trans('Add').'"></td></tr>';
+		print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('Add').'</td><td><input class="flat maxwidth150" name="new_service_type" placeholder="'.$langs->trans('Type').'"></td><td></td><td></td><td><input class="flat minwidth200" name="new_service_label" placeholder="'.$langs->trans('Label').'"></td><td><input class="flat minwidth300" name="new_service_description" placeholder="'.$langs->trans('Description').'"></td><td><input type="submit" class="button small" value="'.$langs->trans('Add').'"></td></tr>';
 		print '</table>';
 		print '</form>';
 	}
@@ -458,15 +524,9 @@ if ($action === 'create') {
 		$delallowed = $permissiontoadd;
 		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, $genallowed, $delallowed, $object->model_pptx, 1, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
 
-		$tmparray = $form->showLinkToObjectBlock($object, array(), array($object->element), 1);
-		if (is_array($tmparray)) {
-			$linktoelem = $tmparray['linktoelem'];
-			$htmltoenteralink = $tmparray['htmltoenteralink'];
-			print $htmltoenteralink;
-			$form->showLinkedObjectBlock($object, $linktoelem);
-		} else {
-			$form->showLinkedObjectBlock($object, $tmparray);
-		}
+		$tmparray = saweeklyreportBuildNativeSourceLinkBlock($object, $permissiontoadd);
+		print $tmparray['htmltoenteralink'];
+		$form->showLinkedObjectBlock($object, $tmparray['linktoelem']);
 
 		print '</div><div class="fichehalfright">';
 		if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
