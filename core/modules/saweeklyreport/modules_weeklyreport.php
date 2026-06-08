@@ -4,6 +4,41 @@
 require_once DOL_DOCUMENT_ROOT.'/core/class/commonnumrefgenerator.class.php';
 
 /**
+ * Parent class for WeeklyReport document models.
+ */
+abstract class ModelePDFWeeklyReport
+{
+	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
+	/**
+	 * Return list of active generation modules.
+	 *
+	 * @param	DoliDB	$db					Database handler
+	 * @param	int		$maxfilenamelength	Max length of value to show
+	 * @return	array<string,string>
+	 */
+	public static function liste_modeles($db, $maxfilenamelength = 0)
+	{
+		// phpcs:enable
+		$list = array();
+
+		include_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
+		if (function_exists('getListOfModels')) {
+			$tmp = getListOfModels($db, 'weeklyreport', $maxfilenamelength);
+			if (is_array($tmp)) {
+				$list = $tmp;
+			}
+		}
+
+		if (empty($list)) {
+			$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+			$list[$model] = $model;
+		}
+
+		return $list;
+	}
+}
+
+/**
  * Parent class for WeeklyReport numbering modules.
  */
 abstract class ModeleNumRefWeeklyReport extends CommonNumRefGenerator

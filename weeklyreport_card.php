@@ -65,6 +65,8 @@ $permissiontoread = $user->hasRight('saweeklyreport', 'weeklyreport', 'read');
 $permissiontoadd = $user->hasRight('saweeklyreport', 'weeklyreport', 'write');
 $permissiontodelete = $user->hasRight('saweeklyreport', 'weeklyreport', 'delete');
 $permissiontovalidate = $user->hasRight('saweeklyreport', 'weeklyreport', 'validate');
+$permissiontoexport = $user->hasRight('saweeklyreport', 'weeklyreport', 'export');
+$permissiontogeneratedoc = ($permissiontoadd || $permissiontoexport);
 
 if (!$permissiontoread) {
 	accessforbidden();
@@ -88,6 +90,13 @@ if ($reshook < 0) {
 }
 
 if (empty($reshook)) {
+	if ($object->id > 0) {
+		$usercangeneratedoc = $permissiontogeneratedoc;
+		$permissiondellink = $permissiontoadd;
+		include DOL_DOCUMENT_ROOT.'/core/actions_dellink.inc.php';
+		include DOL_DOCUMENT_ROOT.'/core/actions_builddoc.inc.php';
+	}
+
 	if ($cancel) {
 		header('Location: '.dol_buildpath('/saweeklyreport/weeklyreport_list.php', 1));
 		exit;
@@ -224,7 +233,7 @@ if (empty($reshook)) {
 		exit;
 	}
 
-	if ($action === 'generatepptx' && $permissiontoadd && $object->id > 0) {
+	if ($action === 'generatepptx' && $permissiontogeneratedoc && $object->id > 0) {
 		if (!$tokenok) {
 			accessforbidden('Invalid token');
 		}
@@ -422,28 +431,10 @@ if ($action === 'create') {
 	print dol_get_fiche_end();
 
 	if ($action !== 'edit') {
-		print '<br>';
-		$relativepath = rtrim($relativepathwithnofile, '/');
-		$urlsource = $cardurl.'?id='.((int) $object->id);
-		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, 0, $permissiontoadd, '', 1, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
-
-		if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
-			include_once DOL_DOCUMENT_ROOT.'/core/class/html.formactions.class.php';
-			$formactions = new FormActions($db);
-			$maxevent = 10;
-			$morehtmlcenter = dolGetButtonTitle($langs->trans('SeeAll'), '', 'fa fa-bars imgforviewmode', dol_buildpath('/saweeklyreport/weeklyreport_agenda.php', 1).'?id='.((int) $object->id));
-			$typeelement = $object->element.(!empty($object->module) ? '@'.$object->module : '');
-			print '<br>';
-			$formactions->showactions($object, $typeelement, 0, 1, '', $maxevent, '', $morehtmlcenter);
-		}
-	}
-
-	if ($action !== 'edit') {
 		print '<div class="tabsAction">';
 		if ($permissiontoadd) {
 			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=edit">'.$langs->trans('Modify').'</a>';
 			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=refreshdata&token='.newToken().'">'.$langs->trans('WeeklyReportRefreshData').'</a>';
-			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=generatepptx&token='.newToken().'">'.$langs->trans('WeeklyReportGeneratePptx').'</a>';
 		}
 		if ($permissiontovalidate && (int) $object->status === WeeklyReport::STATUS_DRAFT) {
 			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=validate&token='.newToken().'">'.$langs->trans('Validate').'</a>';
@@ -458,6 +449,35 @@ if ($action === 'create') {
 			print '<a class="butActionDelete" href="'.$cardurl.'?id='.((int) $object->id).'&action=delete">'.$langs->trans('Delete').'</a>';
 		}
 		print '</div>';
+
+		print '<div class="fichecenter"><div class="fichehalfleft">';
+		print '<a name="builddoc"></a>';
+		$relativepath = rtrim($relativepathwithnofile, '/');
+		$urlsource = $cardurl.'?id='.((int) $object->id);
+		$genallowed = $permissiontogeneratedoc;
+		$delallowed = $permissiontoadd;
+		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, $genallowed, $delallowed, $object->model_pptx, 1, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
+
+		$tmparray = $form->showLinkToObjectBlock($object, array(), array($object->element), 1);
+		if (is_array($tmparray)) {
+			$linktoelem = $tmparray['linktoelem'];
+			$htmltoenteralink = $tmparray['htmltoenteralink'];
+			print $htmltoenteralink;
+			$form->showLinkedObjectBlock($object, $linktoelem);
+		} else {
+			$form->showLinkedObjectBlock($object, $tmparray);
+		}
+
+		print '</div><div class="fichehalfright">';
+		if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+			include_once DOL_DOCUMENT_ROOT.'/core/class/html.formactions.class.php';
+			$formactions = new FormActions($db);
+			$maxevent = 10;
+			$morehtmlcenter = dolGetButtonTitle($langs->trans('SeeAll'), '', 'fa fa-bars imgforviewmode', dol_buildpath('/saweeklyreport/weeklyreport_agenda.php', 1).'?id='.((int) $object->id));
+			$typeelement = $object->element.(!empty($object->module) ? '@'.$object->module : '');
+			$formactions->showactions($object, $typeelement, 0, 1, '', $maxevent, '', $morehtmlcenter);
+		}
+		print '</div></div>';
 	}
 } else {
 	print load_fiche_titre($langs->trans('WeeklyReport'), '', $object->picto);

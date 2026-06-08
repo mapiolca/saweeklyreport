@@ -100,6 +100,7 @@ class WeeklyReport extends CommonObject
 	public $fk_user_modif;
 	public $last_main_doc;
 	public $import_key;
+	public $model_pdf;
 	public $model_pptx;
 	public $status;
 
@@ -206,6 +207,9 @@ class WeeklyReport extends CommonObject
 	public function fetch($id, $ref = null, $noextrafields = 0, $nolines = 0)
 	{
 		$result = $this->fetchCommon($id, $ref, ' AND t.entity IN ('.getEntity($this->element).')', $noextrafields);
+		if ($result > 0) {
+			$this->model_pdf = $this->model_pptx;
+		}
 		if ($result > 0 && empty($nolines)) {
 			$this->fetchLines();
 		}
@@ -432,6 +436,7 @@ class WeeklyReport extends CommonObject
 		if (empty($this->model_pptx)) {
 			$this->model_pptx = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
 		}
+		$this->model_pdf = $this->model_pptx;
 
 		$this->prepareComputedValues();
 	}
@@ -867,7 +872,39 @@ class WeeklyReport extends CommonObject
 	 */
 	public function generateDocument($modele, $outputlangs, $hidedetails = 0, $hidedesc = 0, $hideref = 0, $moreparams = null)
 	{
+		if (!empty($modele)) {
+			$this->model_pptx = $modele;
+			$this->model_pdf = $modele;
+		}
+
 		return $this->generatePptx($outputlangs);
+	}
+
+	/**
+	 * Save last document model selected from native document block.
+	 *
+	 * @param	User	$user		User
+	 * @param	string	$modelpdf	Model key
+	 * @return	int
+	 */
+	public function setDocModel($user, $modelpdf)
+	{
+		$newmodel = dol_trunc($modelpdf, 255);
+
+		$sql = "UPDATE ".$this->db->prefix().$this->table_element;
+		$sql .= " SET model_pptx = '".$this->db->escape($newmodel)."'";
+		$sql .= " WHERE rowid = ".((int) $this->id);
+		$sql .= " AND entity = ".((int) $this->entity);
+
+		$resql = $this->db->query($sql);
+		if ($resql) {
+			$this->model_pptx = $newmodel;
+			$this->model_pdf = $newmodel;
+			return 1;
+		}
+
+		$this->error = $this->db->lasterror();
+		return -1;
 	}
 
 	/**
