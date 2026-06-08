@@ -24,9 +24,9 @@ class modSAWeeklyReport extends DolibarrModules
 		global $conf;
 
 		$this->db = $db;
-		$this->numero = 450005;
+		$this->numero = 999001;
 		$this->rights_class = 'saweeklyreport';
-		$this->family = 'Les Métiers du Bâtiment';
+		$this->family = 'JPSUN';
 		$this->module_position = '91';
 		$this->name = preg_replace('/^mod/i', '', get_class($this));
 		$this->description = 'ModuleSAWeeklyReportDesc';
