@@ -141,12 +141,12 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->menu = array();
 		$r = 0;
 		$this->menu[$r++] = array(
-			'fk_menu' => '',
-			'type' => 'top',
+			'fk_menu' => 'fk_mainmenu=home',
+			'type' => 'left',
 			'titre' => 'ModuleSAWeeklyReportName',
-			'prefix' => img_picto('', $this->picto, 'class="pictofixedwidth valignmiddle"'),
-			'mainmenu' => 'saweeklyreport',
-			'leftmenu' => '',
+			'prefix' => img_picto('', $this->picto, 'class="pictofixedwidth valignmiddle paddingright"'),
+			'mainmenu' => 'home',
+			'leftmenu' => 'saweeklyreport',
 			'url' => '/saweeklyreport/saweeklyreportindex.php',
 			'langs' => 'saweeklyreport@saweeklyreport',
 			'position' => 1000 + $r,
@@ -154,14 +154,14 @@ class modSAWeeklyReport extends DolibarrModules
 			'perms' => '$user->hasRight("saweeklyreport", "weeklyreport", "read")',
 			'target' => '',
 			'user' => 2,
+			'object' => 'WeeklyReport',
 		);
 		$this->menu[$r++] = array(
-			'fk_menu' => 'fk_mainmenu=saweeklyreport',
+			'fk_menu' => 'fk_mainmenu=home,fk_leftmenu=saweeklyreport',
 			'type' => 'left',
-			'titre' => 'WeeklyReports',
-			'prefix' => img_picto('', $this->picto, 'class="pictofixedwidth valignmiddle paddingright"'),
-			'mainmenu' => 'saweeklyreport',
-			'leftmenu' => 'weeklyreport',
+			'titre' => 'WeeklyReportList',
+			'mainmenu' => 'home',
+			'leftmenu' => 'weeklyreport_list',
 			'url' => '/saweeklyreport/weeklyreport_list.php',
 			'langs' => 'saweeklyreport@saweeklyreport',
 			'position' => 1000 + $r,
@@ -172,10 +172,10 @@ class modSAWeeklyReport extends DolibarrModules
 			'object' => 'WeeklyReport',
 		);
 		$this->menu[$r++] = array(
-			'fk_menu' => 'fk_mainmenu=saweeklyreport,fk_leftmenu=weeklyreport',
+			'fk_menu' => 'fk_mainmenu=home,fk_leftmenu=saweeklyreport',
 			'type' => 'left',
 			'titre' => 'NewWeeklyReport',
-			'mainmenu' => 'saweeklyreport',
+			'mainmenu' => 'home',
 			'leftmenu' => 'weeklyreport_new',
 			'url' => '/saweeklyreport/weeklyreport_card.php?action=create',
 			'langs' => 'saweeklyreport@saweeklyreport',

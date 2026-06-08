@@ -33,11 +33,12 @@ if (!$res) {
 }
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
 dol_include_once('/saweeklyreport/class/weeklyreport.class.php');
 dol_include_once('/saweeklyreport/class/weeklyreportservice.class.php');
 dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
 
-$langs->loadLangs(array('saweeklyreport@saweeklyreport', 'other'));
+$langs->loadLangs(array('saweeklyreport@saweeklyreport', 'other', 'agenda', 'mails'));
 
 $id = GETPOSTINT('id');
 $ref = GETPOST('ref', 'alphanohtml');
@@ -67,6 +68,15 @@ $permissiontovalidate = $user->hasRight('saweeklyreport', 'weeklyreport', 'valid
 
 if (!$permissiontoread) {
 	accessforbidden();
+}
+
+$upload_dir = '';
+$modulepart = 'saweeklyreport';
+$relativepathwithnofile = '';
+if ($object->id > 0) {
+	$upload_dir = $object->getDocumentDir();
+	$relativepathwithnofile = ((int) $object->entity).'/weeklyreport/'.dol_sanitizeFileName($object->ref).'/';
+	include DOL_DOCUMENT_ROOT.'/core/actions_linkedfiles.inc.php';
 }
 
 $tokenok = (GETPOST('token', 'alpha') === currentToken());
@@ -266,6 +276,7 @@ if (empty($reshook)) {
 }
 
 $form = new Form($db);
+$formfile = new FormFile($db);
 $cardurl = dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1);
 $title = $langs->trans('WeeklyReport');
 if ($action === 'create') {
@@ -279,14 +290,16 @@ if ($action === 'create') {
 		accessforbidden();
 	}
 	$now = dol_now();
+	$currentyear = (int) date('o', $now);
+	$currentweek = (int) date('W', $now);
 	print load_fiche_titre($title, '', $object->picto);
 	print '<form method="POST" action="'.dol_escape_htmltag($cardurl).'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 	print '<input type="hidden" name="action" value="add">';
 	print dol_get_fiche_head(array(), '');
 	print '<table class="border centpercent tableforfieldcreate">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Year').'</td><td><input class="flat width75" name="year" value="'.dol_escape_htmltag(dol_print_date($now, '%Y')).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Week').'</td><td><input class="flat width75" name="week" value="'.dol_escape_htmltag(dol_print_date($now, '%V')).'"></td></tr>';
+	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Year').'</td><td><input class="flat width75" name="year" value="'.dol_escape_htmltag($currentyear).'"></td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('Week').'</td><td><input class="flat width75" name="week" value="'.dol_escape_htmltag($currentweek).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('Label').'</td><td><input class="flat minwidth300" name="label" value=""></td></tr>';
 	print '</table>';
 	print dol_get_fiche_end();
@@ -407,6 +420,23 @@ if ($action === 'create') {
 	}
 
 	print dol_get_fiche_end();
+
+	if ($action !== 'edit') {
+		print '<br>';
+		$relativepath = rtrim($relativepathwithnofile, '/');
+		$urlsource = $cardurl.'?id='.((int) $object->id);
+		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, 0, $permissiontoadd, '', 1, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
+
+		if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+			include_once DOL_DOCUMENT_ROOT.'/core/class/html.formactions.class.php';
+			$formactions = new FormActions($db);
+			$maxevent = 10;
+			$morehtmlcenter = dolGetButtonTitle($langs->trans('SeeAll'), '', 'fa fa-bars imgforviewmode', dol_buildpath('/saweeklyreport/weeklyreport_agenda.php', 1).'?id='.((int) $object->id));
+			$typeelement = $object->element.(!empty($object->module) ? '@'.$object->module : '');
+			print '<br>';
+			$formactions->showactions($object, $typeelement, 0, 1, '', $maxevent, '', $morehtmlcenter);
+		}
+	}
 
 	if ($action !== 'edit') {
 		print '<div class="tabsAction">';

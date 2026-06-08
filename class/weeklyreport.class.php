@@ -390,10 +390,10 @@ class WeeklyReport extends CommonObject
 
 		$now = dol_now();
 		if (empty($this->year)) {
-			$this->year = (int) dol_print_date($now, '%Y');
+			$this->year = (int) date('o', $now);
 		}
 		if (empty($this->week)) {
-			$this->week = (int) dol_print_date($now, '%V');
+			$this->week = (int) date('W', $now);
 		}
 
 		$bounds = $this->getIsoWeekBounds((int) $this->year, (int) $this->week);

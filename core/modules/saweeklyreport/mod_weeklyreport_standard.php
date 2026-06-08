@@ -55,8 +55,9 @@ class mod_weeklyreport_standard extends ModeleNumRefWeeklyReport
 	{
 		global $conf;
 
-		$year = !empty($object->year) ? (int) $object->year : (int) dol_print_date(dol_now(), '%Y');
-		$week = !empty($object->week) ? (int) $object->week : (int) dol_print_date(dol_now(), '%V');
+		$now = dol_now();
+		$year = !empty($object->year) ? (int) $object->year : (int) date('o', $now);
+		$week = !empty($object->week) ? (int) $object->week : (int) date('W', $now);
 		$mask = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_MASK', $this->prefix.'-{YYYY}-S{WW}');
 		$ref = strtr($mask, array(
 			'{YYYY}' => sprintf('%04d', $year),
