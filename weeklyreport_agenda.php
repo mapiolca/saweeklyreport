@@ -131,11 +131,12 @@ print '<br>';
 $typeelement = $object->element.(!empty($object->module) ? '@'.$object->module : '');
 $out = '&origin='.urlencode($typeelement).'&originid='.urlencode((string) $object->id);
 $out .= '&backtopage='.urlencode($agendapageurl.'?id='.((int) $object->id));
+$createactionurl = DOL_URL_ROOT.'/comm/action/card.php?action=create&token='.newToken().$out;
 $morehtmlright = '';
 if ($user->hasRight('agenda', 'myactions', 'create') || $user->hasRight('agenda', 'allactions', 'create')) {
-	$morehtmlright .= dolGetButtonTitle($langs->trans('AddAction'), '', 'fa fa-plus-circle', DOL_URL_ROOT.'/comm/action/card.php?action=create'.$out);
+	$morehtmlright .= dolGetButtonTitle($langs->trans('AddAction'), '', 'fa fa-plus-circle', $createactionurl);
 } else {
-	$morehtmlright .= dolGetButtonTitle($langs->trans('AddAction'), '', 'fa fa-plus-circle', DOL_URL_ROOT.'/comm/action/card.php?action=create'.$out, '', 0);
+	$morehtmlright .= dolGetButtonTitle($langs->trans('AddAction'), '', 'fa fa-plus-circle', $createactionurl, '', 0);
 }
 
 $param = '&id='.((int) $object->id);

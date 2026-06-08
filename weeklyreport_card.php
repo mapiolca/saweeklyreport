@@ -1,6 +1,12 @@
 <?php
 /* Copyright (C) 2026  Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && in_array($_GET['action'], array('create', 'edit', 'delete'), true) && empty($_GET['token'])) {
+	$_GET['mode'] = $_GET['action'];
+	$_REQUEST['mode'] = $_GET['action'];
+	unset($_GET['action'], $_REQUEST['action']);
+}
+
 $res = 0;
 if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) {
 	$res = @include $_SERVER['CONTEXT_DOCUMENT_ROOT'].'/main.inc.php';
@@ -45,9 +51,13 @@ $langs->loadLangs(array('saweeklyreport@saweeklyreport', 'other', 'agenda', 'mai
 $id = GETPOSTINT('id');
 $ref = GETPOST('ref', 'alphanohtml');
 $action = GETPOST('action', 'aZ09');
+$mode = GETPOST('mode', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
 $backtopage = GETPOST('backtopage', 'alpha');
+if ($action === '' && in_array($mode, array('create', 'edit', 'delete'), true)) {
+	$action = $mode;
+}
 
 $object = new WeeklyReport($db);
 $hookmanager->initHooks(array('weeklyreportcard', 'globalcard'));
@@ -499,7 +509,7 @@ if ($action === 'create') {
 	if ($action !== 'edit') {
 		print '<div class="tabsAction">';
 		if ($permissiontoadd) {
-			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=edit">'.$langs->trans('Modify').'</a>';
+			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&mode=edit">'.$langs->trans('Modify').'</a>';
 			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=refreshdata&token='.newToken().'">'.$langs->trans('WeeklyReportRefreshData').'</a>';
 		}
 		if ($permissiontovalidate && (int) $object->status === WeeklyReport::STATUS_DRAFT) {
@@ -512,7 +522,7 @@ if ($action === 'create') {
 			print '<a class="butActionDelete" href="'.$cardurl.'?id='.((int) $object->id).'&action=cancelreport&token='.newToken().'">'.$langs->trans('Cancel').'</a>';
 		}
 		if ($permissiontodelete) {
-			print '<a class="butActionDelete" href="'.$cardurl.'?id='.((int) $object->id).'&action=delete">'.$langs->trans('Delete').'</a>';
+			print '<a class="butActionDelete" href="'.$cardurl.'?id='.((int) $object->id).'&mode=delete">'.$langs->trans('Delete').'</a>';
 		}
 		print '</div>';
 

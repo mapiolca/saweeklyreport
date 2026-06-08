@@ -35,7 +35,7 @@ print '<div class="opacitymedium">'.$langs->trans('ModuleSAWeeklyReportDesc').'<
 print '<br>';
 print '<a class="button" href="'.dol_buildpath('/saweeklyreport/weeklyreport_list.php', 1).'">'.$langs->trans('WeeklyReports').'</a>';
 if ($user->hasRight('saweeklyreport', 'weeklyreport', 'write')) {
-	print ' <a class="button" href="'.dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?action=create">'.$langs->trans('NewWeeklyReport').'</a>';
+	print ' <a class="button" href="'.dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?mode=create">'.$langs->trans('NewWeeklyReport').'</a>';
 }
 print '</div>';
 

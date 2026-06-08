@@ -2,6 +2,8 @@
 
 ## 0.1.0 - 2026-06-08
 
+- Correction des liens d'affichage sans token pour respecter la protection CSRF Dolibarr.
+
 - Ajout du filtrage des tickets par type de demande, des snapshots groupe/sévérité et des liens natifs vers tickets/interventions.
 
 - Création du module `saweeklyreport`.

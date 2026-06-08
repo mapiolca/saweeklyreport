@@ -163,7 +163,7 @@ class modSAWeeklyReport extends DolibarrModules
 			'titre' => 'NewWeeklyReport',
 			'mainmenu' => 'home',
 			'leftmenu' => 'weeklyreport_new',
-			'url' => '/saweeklyreport/weeklyreport_card.php?action=create',
+			'url' => '/saweeklyreport/weeklyreport_card.php?mode=create',
 			'langs' => 'saweeklyreport@saweeklyreport',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('saweeklyreport')",

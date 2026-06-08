@@ -267,7 +267,7 @@ print '<input type="hidden" name="contextpage" value="'.dol_escape_htmltag($cont
 
 $newcardbutton = '';
 if ($user->hasRight('saweeklyreport', 'weeklyreport', 'write')) {
-	$newcardbutton = dolGetButtonTitle($langs->trans('NewWeeklyReport'), '', 'fa fa-plus-circle', dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?action=create', '', 1);
+	$newcardbutton = dolGetButtonTitle($langs->trans('NewWeeklyReport'), '', 'fa fa-plus-circle', dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?mode=create', '', 1);
 }
 
 print_barre_liste($title, $page, $listurl, $param, $sortfield, $sortorder, '', $num, $nbtotalofrecords, $object->picto, 0, $newcardbutton, '', $limit, 0, 0, 1);
