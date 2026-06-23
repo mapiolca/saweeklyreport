@@ -845,20 +845,6 @@ class WeeklyReport extends CommonObject
 	}
 
 	/**
-	 * Copy error information from another object.
-	 *
-	 * @param	CommonObject	$object	Object with error data
-	 * @return	void
-	 */
-	private function setErrorsFromObject($object)
-	{
-		$this->error = !empty($object->error) ? $object->error : $this->error;
-		if (!empty($object->errors) && is_array($object->errors)) {
-			$this->errors = array_merge((array) $this->errors, $object->errors);
-		}
-	}
-
-	/**
 	 * Fetch kWc total from closed customer orders.
 	 *
 	 * @param	string	$start		SQL date inclusive
