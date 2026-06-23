@@ -33,6 +33,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/ajax.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formticket.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
 dol_include_once('/ticket/class/ticket.class.php');
 dol_include_once('/saweeklyreport/class/saweeklyreporttickethelper.class.php');
 require_once '../lib/saweeklyreport.lib.php';
@@ -59,8 +60,8 @@ if ($action === 'updatesettings') {
 		'SAWEEKLYREPORT_WEEKLYREPORT_ADDON' => GETPOST('SAWEEKLYREPORT_WEEKLYREPORT_ADDON', 'aZ09'),
 		'SAWEEKLYREPORT_WEEKLYREPORT_MASK' => GETPOST('SAWEEKLYREPORT_WEEKLYREPORT_MASK', 'alphanohtml'),
 		'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX' => GETPOST('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'aZ09'),
-		'SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE' => GETPOST('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', 'restricthtml'),
-		'SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER' => GETPOST('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'restricthtml'),
+		'SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE' => dol_htmlcleanlastbr(GETPOST('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', 'restricthtml')),
+		'SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER' => dol_htmlcleanlastbr(GETPOST('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'restricthtml')),
 	);
 	if (isModEnabled('ticket')) {
 		$settings['SAWEEKLYREPORT_TICKET_TYPE_CODES'] = implode(',', SAWeeklyReportTicketHelper::cleanTicketDictionaryCodes($db, GETPOST('SAWEEKLYREPORT_TICKET_TYPE_CODES', 'array'), 'c_ticket_type'));
@@ -128,14 +129,20 @@ print '</td></tr>';
 print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportAgendaSettings').'</th></tr>';
 if (isModEnabled('agenda')) {
 	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaCreate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_CREATE', array(), (int) $conf->entity).'</td></tr>';
-	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaValidate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_VALIDATE', array(), (int) $conf->entity).'</td></tr>';
-	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaGenerateDocument').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_GENERATE_DOCUMENT', array(), (int) $conf->entity).'</td></tr>';
+	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaUpdate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_UPDATE', array(), (int) $conf->entity).'</td></tr>';
+	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaDelete').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_DELETE', array(), (int) $conf->entity).'</td></tr>';
 } else {
 	print '<tr class="oddeven"><td colspan="2" class="opacitymedium">'.$langs->trans('RequiresAgenda').'</td></tr>';
 }
 print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportDefaultTexts').'</th></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportSafetyMessage').'</td><td><textarea class="flat centpercent" rows="3" name="SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE">'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE')).'</textarea></td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportVehicleLoadingReminder').'</td><td><textarea class="flat centpercent" rows="3" name="SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER">'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER')).'</textarea></td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportSafetyMessage').'</td><td>';
+$editor = new DolEditor('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', getDolGlobalString('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
+print $editor->Create(1);
+print '</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportVehicleLoadingReminder').'</td><td>';
+$editor = new DolEditor('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', getDolGlobalString('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
+print $editor->Create(1);
+print '</td></tr>';
 print '</table>';
 
 print '<div class="center">';

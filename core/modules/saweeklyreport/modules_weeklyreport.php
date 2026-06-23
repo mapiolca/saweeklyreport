@@ -18,6 +18,8 @@ abstract class ModelePDFWeeklyReport
 	 */
 	public static function liste_modeles($db, $maxfilenamelength = 0)
 	{
+		global $langs;
+
 		// phpcs:enable
 		$list = array();
 
@@ -32,6 +34,14 @@ abstract class ModelePDFWeeklyReport
 		if (empty($list)) {
 			$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
 			$list[$model] = $model;
+		}
+		if (is_object($langs)) {
+			$langs->load('saweeklyreport@saweeklyreport');
+			$list['weekly_report_standard'] = $langs->trans('WeeklyReportPptxStandardModel');
+			$list['pdf_weeklyreport_powerpoint'] = $langs->trans('WeeklyReportPdfTcpdfModel');
+		} else {
+			$list['weekly_report_standard'] = 'weekly_report_standard';
+			$list['pdf_weeklyreport_powerpoint'] = 'pdf_weeklyreport_powerpoint';
 		}
 
 		return $list;

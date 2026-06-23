@@ -35,8 +35,8 @@ if (!isModEnabled('saweeklyreport')) {
 	accessforbidden();
 }
 
-$permissiontoread = $user->hasRight('saweeklyreport', 'weeklyreport', 'read');
-$permissiontoadd = $user->hasRight('saweeklyreport', 'weeklyreport', 'write');
+$permissiontoread = saweeklyreportCanDo($user, $object, 'read');
+$permissiontoadd = saweeklyreportCanDo($user, $object, 'write');
 $permissionnote = $permissiontoadd;
 if (!$permissiontoread) {
 	accessforbidden();

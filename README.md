@@ -6,8 +6,10 @@ Module Dolibarr externe pour générer des rapports hebdomadaires Soleil Aquitai
 
 - Objet métier `WeeklyReport` avec brouillon, validation, annulation, notes, documents et onglet Agenda.
 - Calcul automatique des kWc depuis les commandes clients clôturées et l’extrafield `commande_extrafields.powerplantpv_peak_power` fourni par PowerPlantPV.
-- Préremplissage éditable des lignes SAV et maintenance depuis les interventions et tickets Dolibarr actifs.
+- Préremplissage des lignes SAV et maintenance depuis les interventions et tickets Dolibarr actifs, avec tickets liés en lecture seule et dissociables de la fiche.
 - Génération PPTX éditable à partir du modèle `doctemplates/saweeklyreport/weekly_report_standard.pptx`.
+- Génération PDF native TCPDF avec le modèle `pdf_weeklyreport_powerpoint`, sans conversion LibreOffice.
+- Textes éditables avec DolEditor lorsque le module WYSIWYG Dolibarr est activé, avec prise en charge HTML UTF-8/utf8mb4 et émojis selon la police disponible.
 - Numérotation configurable avec le masque `SAWEEKLYREPORT_WEEKLYREPORT_MASK` (`SAWR-{YYYY}-S{WW}` par défaut).
 - Compatibilité Multicompany avec `entity`, `getEntity('weeklyreport')`, partage d’objet et partage de numérotation.
 - API REST pour créer, lire, modifier, supprimer, actualiser et générer les rapports.

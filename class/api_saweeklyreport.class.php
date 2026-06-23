@@ -4,6 +4,7 @@
 use Luracast\Restler\RestException;
 
 dol_include_once('/saweeklyreport/class/weeklyreport.class.php');
+dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
 
 /**
  * API class for SAWeeklyReport.
@@ -298,10 +299,10 @@ class Saweeklyreport extends DolibarrApi
 		if (!empty(DolibarrApiAccess::$user->socid)) {
 			throw new RestException(403);
 		}
-		if (!DolibarrApiAccess::$user->hasRight('saweeklyreport', 'weeklyreport', 'api')) {
+		if (!saweeklyreportCanDo(DolibarrApiAccess::$user, null, 'api')) {
 			throw new RestException(403);
 		}
-		if (!DolibarrApiAccess::$user->hasRight('saweeklyreport', 'weeklyreport', $right)) {
+		if (!saweeklyreportCanDo(DolibarrApiAccess::$user, null, $right)) {
 			throw new RestException(403);
 		}
 	}

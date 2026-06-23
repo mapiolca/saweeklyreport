@@ -23,6 +23,7 @@ class WeeklyReport extends CommonObject
 	const STATUS_DRAFT = 0;
 	const STATUS_VALIDATED = 1;
 	const STATUS_CANCELED = 9;
+	const DOC_MODEL_PDF_TCPDF = 'pdf_weeklyreport_powerpoint';
 
 	public $fields = array(
 		'rowid' => array('type' => 'integer', 'label' => 'TechnicalID', 'enabled' => 1, 'position' => 1, 'notnull' => 1, 'visible' => 0, 'noteditable' => 1, 'index' => 1),
@@ -357,7 +358,7 @@ class WeeklyReport extends CommonObject
 	 */
 	public function validate($user, $notrigger = 0)
 	{
-		return $this->setStatusCommon($user, self::STATUS_VALIDATED, $notrigger, $this->TRIGGER_PREFIX.'_VALIDATE');
+		return $this->setWeeklyReportStatus($user, self::STATUS_VALIDATED, 'status_validate', $notrigger);
 	}
 
 	/**
@@ -369,7 +370,7 @@ class WeeklyReport extends CommonObject
 	 */
 	public function setDraft($user, $notrigger = 0)
 	{
-		return $this->setStatusCommon($user, self::STATUS_DRAFT, $notrigger, $this->TRIGGER_PREFIX.'_UNVALIDATE');
+		return $this->setWeeklyReportStatus($user, self::STATUS_DRAFT, 'status_setdraft', $notrigger);
 	}
 
 	/**
@@ -381,7 +382,52 @@ class WeeklyReport extends CommonObject
 	 */
 	public function cancel($user, $notrigger = 0)
 	{
-		return $this->setStatusCommon($user, self::STATUS_CANCELED, $notrigger, $this->TRIGGER_PREFIX.'_CANCEL');
+		return $this->setWeeklyReportStatus($user, self::STATUS_CANCELED, 'status_cancel', $notrigger);
+	}
+
+	/**
+	 * Set report status and trigger a CRUD update.
+	 *
+	 * @param	User	$user		User
+	 * @param	int		$status		New status
+	 * @param	string	$reason		Stable trigger reason
+	 * @param	int		$notrigger	Disable triggers
+	 * @return	int
+	 */
+	private function setWeeklyReportStatus($user, $status, $reason, $notrigger = 0)
+	{
+		if (empty($this->id)) {
+			$this->error = 'ErrorObjectMustBeFetched';
+			return -1;
+		}
+
+		$oldcopy = clone $this;
+		$this->oldcopy = $oldcopy;
+		$this->status = (int) $status;
+
+		$this->db->begin();
+		$result = $this->update($user, 1);
+		if ($result < 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		if (!$notrigger) {
+			$this->context['trigger_reason'] = $reason;
+			$this->context['changed_fields'] = array('status');
+			$this->context['old_status'] = (int) $oldcopy->status;
+			$this->context['new_status'] = (int) $this->status;
+
+			$resulttrigger = $this->call_trigger($this->TRIGGER_PREFIX.'_UPDATE', $user);
+			if ($resulttrigger < 0) {
+				$this->db->rollback();
+				return -1;
+			}
+		}
+
+		$this->db->commit();
+
+		return 1;
 	}
 
 	/**
@@ -587,6 +633,142 @@ class WeeklyReport extends CommonObject
 	}
 
 	/**
+	 * Add an existing ticket to the report without modifying the ticket.
+	 *
+	 * @param	int		$ticketid	Ticket ID
+	 * @param	User	$user		User
+	 * @return	int
+	 */
+	public function addTicketLine($ticketid, User $user)
+	{
+		if ($ticketid <= 0 || empty($this->id)) {
+			$this->error = 'ErrorBadParameter';
+			return -1;
+		}
+		if (!isModEnabled('ticket') || (empty($user->admin) && !$user->hasRight('ticket', 'read'))) {
+			$this->error = 'ErrorForbidden';
+			return -1;
+		}
+
+		$ticketdata = SAWeeklyReportTicketHelper::getTicketData($this->db, $ticketid);
+		if (empty($ticketdata)) {
+			$this->error = 'ErrorRecordNotFound';
+			return -1;
+		}
+
+		$sql = "SELECT rowid FROM ".$this->db->prefix()."saweeklyreport_weeklyreportservice";
+		$sql .= " WHERE fk_weeklyreport = ".((int) $this->id);
+		$sql .= " AND entity = ".((int) $this->entity);
+		$sql .= " AND source_element = 'ticket'";
+		$sql .= " AND source_id = ".((int) $ticketid);
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		if ($this->db->num_rows($resql) > 0) {
+			return 1;
+		}
+
+		$line = new WeeklyReportService($this->db);
+		$line->entity = (int) $this->entity;
+		$line->fk_weeklyreport = (int) $this->id;
+		$line->source_element = 'ticket';
+		$line->source_id = (int) $ticketid;
+		$line->service_type = (string) $ticketdata['type_code'];
+		$line->ticket_category_code = (string) $ticketdata['category_code'];
+		$line->ticket_severity_code = (string) $ticketdata['severity_code'];
+		$line->label = (string) $ticketdata['label'];
+		$line->description = (string) $ticketdata['description'];
+		$line->status = (int) $ticketdata['status'];
+		$line->position = count($this->lines) + 1;
+		$line->date_service = $this->getTimestampFromSqlDate((string) $ticketdata['date_service']);
+
+		$this->db->begin();
+		$result = $line->create($user, 1);
+		if ($result < 0) {
+			$this->setErrorsFromObject($line);
+			$this->db->rollback();
+			return -1;
+		}
+		if (!$this->isNativeSourceLinked('ticket', $ticketid)) {
+			$result = $this->add_object_linked('ticket', $ticketid, $user, 1);
+			if ($result <= 0) {
+				$this->error = $this->db->lasterror();
+				$this->db->rollback();
+				return -1;
+			}
+		}
+
+		$oldcopy = clone $this;
+		$this->oldcopy = $oldcopy;
+		$this->context['trigger_reason'] = 'ticket_link';
+		$this->context['linked_ticket_id'] = (int) $ticketid;
+		$resulttrigger = $this->call_trigger($this->TRIGGER_PREFIX.'_UPDATE', $user);
+		if ($resulttrigger < 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->db->commit();
+		$this->fetch((int) $this->id);
+
+		return 1;
+	}
+
+	/**
+	 * Detach a service line from the report without modifying the source object.
+	 *
+	 * @param	int		$lineid	Line ID
+	 * @param	User	$user	User
+	 * @return	int
+	 */
+	public function detachServiceLine($lineid, User $user)
+	{
+		if ($lineid <= 0 || empty($this->id)) {
+			$this->error = 'ErrorBadParameter';
+			return -1;
+		}
+
+		$line = new WeeklyReportService($this->db);
+		if ($line->fetch($lineid) <= 0 || (int) $line->fk_weeklyreport !== (int) $this->id) {
+			$this->error = 'ErrorRecordNotFound';
+			return -1;
+		}
+
+		$this->db->begin();
+		$sourceelement = (string) $line->source_element;
+		$sourceid = (int) $line->source_id;
+		if ($line->delete($user, 1) < 0) {
+			$this->setErrorsFromObject($line);
+			$this->db->rollback();
+			return -1;
+		}
+		if ($sourceelement !== '' && $sourceid > 0) {
+			if ($this->deleteNativeSourceLink($sourceelement, $sourceid) < 0) {
+				$this->db->rollback();
+				return -1;
+			}
+		}
+
+		$oldcopy = clone $this;
+		$this->oldcopy = $oldcopy;
+		$this->context['trigger_reason'] = 'service_line_detach';
+		$this->context['detached_source_element'] = $sourceelement;
+		$this->context['detached_source_id'] = $sourceid;
+		$resulttrigger = $this->call_trigger($this->TRIGGER_PREFIX.'_UPDATE', $user);
+		if ($resulttrigger < 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->db->commit();
+		$this->fetch((int) $this->id);
+
+		return 1;
+	}
+
+	/**
 	 * Link native source objects to the report.
 	 *
 	 * @param	array<int,array<string,mixed>>	$services	Services
@@ -634,6 +816,46 @@ class WeeklyReport extends CommonObject
 		$resql = $this->db->query($sql);
 
 		return ($resql && $this->db->num_rows($resql) > 0);
+	}
+
+	/**
+	 * Delete native object link for a detached source.
+	 *
+	 * @param	string	$sourceelement	Source element
+	 * @param	int		$sourceid		Source id
+	 * @return	int
+	 */
+	private function deleteNativeSourceLink($sourceelement, $sourceid)
+	{
+		$targettype = $this->getElementType();
+
+		$sql = "DELETE FROM ".$this->db->prefix()."element_element";
+		$sql .= " WHERE ((fk_source = ".((int) $sourceid)." AND sourcetype = '".$this->db->escape($sourceelement)."'";
+		$sql .= " AND fk_target = ".((int) $this->id)." AND targettype = '".$this->db->escape($targettype)."')";
+		$sql .= " OR (fk_source = ".((int) $this->id)." AND sourcetype = '".$this->db->escape($targettype)."'";
+		$sql .= " AND fk_target = ".((int) $sourceid)." AND targettype = '".$this->db->escape($sourceelement)."'))";
+
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+
+		return 1;
+	}
+
+	/**
+	 * Copy error information from another object.
+	 *
+	 * @param	CommonObject	$object	Object with error data
+	 * @return	void
+	 */
+	private function setErrorsFromObject($object)
+	{
+		$this->error = !empty($object->error) ? $object->error : $this->error;
+		if (!empty($object->errors) && is_array($object->errors)) {
+			$this->errors = array_merge((array) $this->errors, $object->errors);
+		}
 	}
 
 	/**
@@ -770,7 +992,7 @@ class WeeklyReport extends CommonObject
 
 		$services = array();
 
-		if (getDolGlobalInt('SAWEEKLYREPORT_PREFILL_FICHINTER', 1) && isModEnabled('intervention') && is_object($user) && $user->hasRight('ficheinter', 'lire') && $this->tableExists('fichinter')) {
+		if (getDolGlobalInt('SAWEEKLYREPORT_PREFILL_FICHINTER', 1) && isModEnabled('intervention') && is_object($user) && (!empty($user->admin) || $user->hasRight('ficheinter', 'lire')) && $this->tableExists('fichinter')) {
 			$sql = "SELECT rowid, ref, description, datei, fk_statut";
 			$sql .= " FROM ".$this->db->prefix()."fichinter";
 			$sql .= " WHERE entity IN (".getEntity('fichinter').")";
@@ -795,7 +1017,7 @@ class WeeklyReport extends CommonObject
 			}
 		}
 
-		if (getDolGlobalInt('SAWEEKLYREPORT_PREFILL_TICKET', 1) && isModEnabled('ticket') && is_object($user) && $user->hasRight('ticket', 'read') && $this->tableExists('ticket')) {
+		if (getDolGlobalInt('SAWEEKLYREPORT_PREFILL_TICKET', 1) && isModEnabled('ticket') && is_object($user) && (!empty($user->admin) || $user->hasRight('ticket', 'read')) && $this->tableExists('ticket')) {
 			$tickettypecodes = SAWeeklyReportTicketHelper::cleanTicketDictionaryCodes($this->db, getDolGlobalString('SAWEEKLYREPORT_TICKET_TYPE_CODES'), 'c_ticket_type');
 			$sql = "SELECT rowid, ref, subject, message, datec, fk_statut, type_code, category_code, severity_code";
 			$sql .= " FROM ".$this->db->prefix()."ticket";
@@ -847,6 +1069,85 @@ class WeeklyReport extends CommonObject
 	}
 
 	/**
+	 * Return shared document data for PPTX and PDF renderers.
+	 *
+	 * @param	Translate	$outputlangs	Output language
+	 * @return	array<string,string>
+	 */
+	public function getDocumentData($outputlangs)
+	{
+		$period = 'Semaine '.sprintf('%02d', (int) $this->week).' - '.((int) $this->year);
+		$service = $this->getServiceSummary();
+		$techsummary = $this->formatNumber($this->technician_days, 1).' j/h - '.$this->formatNumber($this->technician_average, 1).' tech./jour';
+		$peakpowerlabel = is_object($outputlangs) ? $outputlangs->transnoentitiesnoconv('WeeklyReportPeakPowerInstalled') : 'Puissance crête posée';
+		if ($peakpowerlabel === 'WeeklyReportPeakPowerInstalled') {
+			$peakpowerlabel = 'Puissance crête posée';
+		}
+		$previousweek = $peakpowerlabel.' : '.$this->formatPower($this->week_installed_power);
+		$previouscomment = $this->cleanOutputText($this->previous_week_feedback);
+		if ($previouscomment !== '') {
+			$previousweek .= ' - '.$previouscomment;
+		}
+
+		return array(
+			'report_title' => 'BILAN MENSUEL SOLEIL AQUITAIN',
+			'report_period' => $period,
+			'report_subtitle' => 'Réunion équipe techniciens - '.((int) $this->meeting_duration).' min',
+			'report_tagline' => 'Production - Retours terrain - Objectifs',
+			'week_title' => 'BILAN SEMAINE '.sprintf('%02d', (int) $this->week).' - '.((int) $this->year),
+			'week_installed_power' => $this->formatPower($this->week_installed_power),
+			'week_label' => 'S'.sprintf('%02d', (int) $this->week),
+			'technician_summary' => $techsummary,
+			'month_installed_power' => $this->formatPower($this->month_installed_power),
+			'month_label' => $this->getMonthLabel($outputlangs),
+			'month_delta' => '(+'.$this->formatPower($this->week_installed_power).' en S'.sprintf('%02d', (int) $this->week).')',
+			'weekly_target_power' => $this->formatPower($this->weekly_target_power),
+			'annual_installed_power' => $this->formatPower($this->annual_installed_power),
+			'annual_completion_rate' => 'Taux de réalisation : '.$this->formatNumber($this->annual_completion_rate, 1).'%',
+			'annual_progress' => $this->formatNumber($this->annual_installed_power, 0).' / '.$this->formatNumber($this->annual_target_power, 0).' kWc',
+			'annual_average_power' => 'Cadence : '.$this->formatNumber($this->annual_average_power, 1).' kWc/sem.',
+			'annual_average_detail' => '('.$this->formatNumber($this->annual_installed_power, 0).' kWc / '.$this->formatNumber($this->workweeks_elapsed, 1).' sem. ouvrées)',
+			'previous_week_feedback' => $previousweek,
+			'field_returns' => $this->cleanOutputText($this->field_returns),
+			'current_week_goal' => $this->cleanOutputText($this->current_week_goal),
+			'service_summary' => $service,
+			'technician_detail' => $techsummary.' - '.$this->cleanOutputText($this->vehicle_loading_reminder),
+			'safety_message' => $this->cleanOutputText($this->safety_message),
+		);
+	}
+
+	/**
+	 * Return service rows for document output.
+	 *
+	 * @param	Translate	$outputlangs	Output language
+	 * @return	array<int,array<string,string>>
+	 */
+	public function getDocumentServiceRows($outputlangs)
+	{
+		global $langs;
+
+		$langobj = is_object($outputlangs) ? $outputlangs : $langs;
+		$rows = array();
+		foreach ($this->lines as $line) {
+			if ((string) $line->source_element === 'ticket') {
+				$rows[] = SAWeeklyReportTicketHelper::getServiceLineDisplayData($this->db, $langobj, $line);
+				continue;
+			}
+
+			$rows[] = array(
+				'type' => (string) $line->service_type,
+				'group' => '',
+				'severity' => '',
+				'label' => (string) $line->label,
+				'description' => $this->cleanOutputText($line->description),
+				'origin' => (string) $line->source_element.((int) $line->source_id > 0 ? ' #'.((int) $line->source_id) : ''),
+			);
+		}
+
+		return $rows;
+	}
+
+	/**
 	 * Generate PPTX document.
 	 *
 	 * @param	Translate	$outputlangs	Output language
@@ -854,7 +1155,7 @@ class WeeklyReport extends CommonObject
 	 */
 	public function generatePptx($outputlangs)
 	{
-		global $conf, $user;
+		global $user;
 
 		if (!class_exists('ZipArchive')) {
 			$this->error = 'ErrorZipArchiveUnavailable';
@@ -875,7 +1176,7 @@ class WeeklyReport extends CommonObject
 
 		$outputdir = $this->getDocumentDir();
 		dol_mkdir($outputdir);
-		$filename = dol_sanitizeFileName($this->ref).'.pptx';
+		$filename = $this->getDocumentBaseFilename().'.pptx';
 		$outputfile = $outputdir.'/'.$filename;
 
 		if (!dol_copy($template, $outputfile, 0, 1)) {
@@ -915,12 +1216,47 @@ class WeeklyReport extends CommonObject
 		}
 		$zip->close();
 
-		$this->last_main_doc = ((int) $this->entity).'/weeklyreport/'.dol_sanitizeFileName($this->ref).'/'.$filename;
-		if ($this->update($user, 1) < 0) {
+		if ($this->recordGeneratedDocument($user, $filename, 'document_pptx_generation') < 0) {
 			return -1;
 		}
-		$resulttrigger = $this->call_trigger($this->TRIGGER_PREFIX.'_GENERATE_DOCUMENT', $user);
-		if ($resulttrigger < 0) {
+
+		return 1;
+	}
+
+	/**
+	 * Generate TCPDF document.
+	 *
+	 * @param	Translate	$outputlangs	Output language
+	 * @param	int			$hidedetails	Unused
+	 * @param	int			$hidedesc		Unused
+	 * @param	int			$hideref		Unused
+	 * @return	int
+	 */
+	public function generatePdfTcpdf($outputlangs, $hidedetails = 0, $hidedesc = 0, $hideref = 0)
+	{
+		global $user;
+
+		dol_include_once('/saweeklyreport/core/modules/saweeklyreport/doc/'.self::DOC_MODEL_PDF_TCPDF.'.modules.php');
+		if (!class_exists(self::DOC_MODEL_PDF_TCPDF)) {
+			$this->error = 'ErrorPdfModelNotReadable';
+			return -1;
+		}
+
+		$modelclass = self::DOC_MODEL_PDF_TCPDF;
+		$generator = new $modelclass($this->db);
+		$result = $generator->write_file($this, $outputlangs, '', $hidedetails, $hidedesc, $hideref);
+		if ($result <= 0) {
+			$this->error = !empty($generator->error) ? $generator->error : 'ErrorFailedToGeneratePDF';
+			$this->errors = array_merge((array) $this->errors, (array) $generator->errors);
+			return -1;
+		}
+
+		$filename = $this->getDocumentBaseFilename().'.pdf';
+		if (!empty($generator->result['fullpath'])) {
+			$filename = basename((string) $generator->result['fullpath']);
+		}
+
+		if ($this->recordGeneratedDocument($user, $filename, 'document_pdf_generation') < 0) {
 			return -1;
 		}
 
@@ -943,6 +1279,10 @@ class WeeklyReport extends CommonObject
 		if (!empty($modele)) {
 			$this->model_pptx = $modele;
 			$this->model_pdf = $modele;
+		}
+
+		if ((string) $modele === self::DOC_MODEL_PDF_TCPDF || (string) $this->model_pdf === self::DOC_MODEL_PDF_TCPDF) {
+			return $this->generatePdfTcpdf($outputlangs, $hidedetails, $hidedesc, $hideref);
 		}
 
 		return $this->generatePptx($outputlangs);
@@ -983,34 +1323,32 @@ class WeeklyReport extends CommonObject
 	 */
 	private function buildPptxReplacementMap($outputlangs)
 	{
-		$period = 'Semaine '.sprintf('%02d', (int) $this->week).' — '.((int) $this->year);
-		$service = $this->getServiceSummary();
-		$techsummary = $this->formatNumber($this->technician_days, 1).' j/h — '.$this->formatNumber($this->technician_average, 1).' tech./jour';
+		$data = $this->getDocumentData($outputlangs);
 
 		return array(
-			'{{REPORT_TITLE}}' => 'BILAN MENSUEL SOLEIL AQUITAIN',
-			'{{REPORT_PERIOD}}' => $period,
-			'{{REPORT_SUBTITLE}}' => 'Réunion équipe techniciens • '.((int) $this->meeting_duration).' min',
-			'{{REPORT_TAGLINE}}' => 'Production • Retours terrain • Objectifs',
-			'{{WEEK_TITLE}}' => 'BILAN SEMAINE '.sprintf('%02d', (int) $this->week).' — '.((int) $this->year),
-			'{{WEEK_INSTALLED_POWER}}' => $this->formatPower($this->week_installed_power),
-			'{{WEEK_LABEL}}' => 'S'.sprintf('%02d', (int) $this->week),
-			'{{TECHNICIAN_SUMMARY}}' => $techsummary,
-			'{{MONTH_INSTALLED_POWER}}' => $this->formatPower($this->month_installed_power),
-			'{{MONTH_LABEL}}' => $this->getMonthLabel($outputlangs),
-			'{{MONTH_DELTA}}' => '(+'.$this->formatPower($this->week_installed_power).' en S'.sprintf('%02d', (int) $this->week).')',
-			'{{WEEKLY_TARGET_POWER}}' => $this->formatPower($this->weekly_target_power),
-			'{{ANNUAL_INSTALLED_POWER}}' => $this->formatPower($this->annual_installed_power),
-			'{{ANNUAL_COMPLETION_RATE}}' => 'Taux de réalisation : '.$this->formatNumber($this->annual_completion_rate, 1).'%',
-			'{{ANNUAL_PROGRESS}}' => '→ '.$this->formatNumber($this->annual_installed_power, 0).' / '.$this->formatNumber($this->annual_target_power, 0).' kWc',
-			'{{ANNUAL_AVERAGE_POWER}}' => 'Cadence : '.$this->formatNumber($this->annual_average_power, 1).' kWc/sem.',
-			'{{ANNUAL_AVERAGE_DETAIL}}' => '('.$this->formatNumber($this->annual_installed_power, 0).' kWc / '.$this->formatNumber($this->workweeks_elapsed, 1).' sem. ouvrées)',
-			'{{PREVIOUS_WEEK_FEEDBACK}}' => $this->cleanOutputText($this->previous_week_feedback),
-			'{{FIELD_RETURNS}}' => $this->cleanOutputText($this->field_returns),
-			'{{CURRENT_WEEK_GOAL}}' => $this->cleanOutputText($this->current_week_goal),
-			'{{SERVICE_SUMMARY}}' => $service,
-			'{{TECHNICIAN_DETAIL}}' => $techsummary.' • '.$this->cleanOutputText($this->vehicle_loading_reminder),
-			'{{SAFETY_MESSAGE}}' => $this->cleanOutputText($this->safety_message),
+			'{{REPORT_TITLE}}' => $data['report_title'],
+			'{{REPORT_PERIOD}}' => $data['report_period'],
+			'{{REPORT_SUBTITLE}}' => $data['report_subtitle'],
+			'{{REPORT_TAGLINE}}' => $data['report_tagline'],
+			'{{WEEK_TITLE}}' => $data['week_title'],
+			'{{WEEK_INSTALLED_POWER}}' => $data['week_installed_power'],
+			'{{WEEK_LABEL}}' => $data['week_label'],
+			'{{TECHNICIAN_SUMMARY}}' => $data['technician_summary'],
+			'{{MONTH_INSTALLED_POWER}}' => $data['month_installed_power'],
+			'{{MONTH_LABEL}}' => $data['month_label'],
+			'{{MONTH_DELTA}}' => $data['month_delta'],
+			'{{WEEKLY_TARGET_POWER}}' => $data['weekly_target_power'],
+			'{{ANNUAL_INSTALLED_POWER}}' => $data['annual_installed_power'],
+			'{{ANNUAL_COMPLETION_RATE}}' => $data['annual_completion_rate'],
+			'{{ANNUAL_PROGRESS}}' => $data['annual_progress'],
+			'{{ANNUAL_AVERAGE_POWER}}' => $data['annual_average_power'],
+			'{{ANNUAL_AVERAGE_DETAIL}}' => $data['annual_average_detail'],
+			'{{PREVIOUS_WEEK_FEEDBACK}}' => $data['previous_week_feedback'],
+			'{{FIELD_RETURNS}}' => $data['field_returns'],
+			'{{CURRENT_WEEK_GOAL}}' => $data['current_week_goal'],
+			'{{SERVICE_SUMMARY}}' => $data['service_summary'],
+			'{{TECHNICIAN_DETAIL}}' => $data['technician_detail'],
+			'{{SAFETY_MESSAGE}}' => $data['safety_message'],
 		);
 	}
 
@@ -1062,13 +1400,20 @@ class WeeklyReport extends CommonObject
 	 */
 	private function getServiceSummary()
 	{
+		global $langs;
+
 		if (empty($this->lines)) {
 			return 'Aucune intervention SAV ou maintenance identifiée sur la période';
 		}
 
 		$items = array();
 		foreach ($this->lines as $line) {
-			$items[] = $this->cleanOutputText($line->label);
+			if ((string) $line->source_element === 'ticket') {
+				$displaydata = SAWeeklyReportTicketHelper::getServiceLineDisplayData($this->db, $langs, $line);
+				$items[] = $this->cleanOutputText((string) $displaydata['label']);
+			} else {
+				$items[] = $this->cleanOutputText($line->label);
+			}
 		}
 
 		return implode(' • ', array_slice($items, 0, 8));
@@ -1081,7 +1426,7 @@ class WeeklyReport extends CommonObject
 	 */
 	private function getPptxTemplatePath()
 	{
-		$model = !empty($this->model_pptx) ? $this->model_pptx : getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+		$model = $this->getPptxTemplateModel();
 		$model = preg_replace('/[^a-zA-Z0-9_\-]/', '', (string) $model);
 
 		$candidates = array(
@@ -1098,15 +1443,141 @@ class WeeklyReport extends CommonObject
 	}
 
 	/**
+	 * Return PPTX template model, ignoring non-PPTX document models.
+	 *
+	 * @return	string
+	 */
+	private function getPptxTemplateModel()
+	{
+		$model = !empty($this->model_pptx) ? (string) $this->model_pptx : getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+		if ($model === self::DOC_MODEL_PDF_TCPDF || strpos($model, 'pdf_') === 0) {
+			$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+		}
+
+		return $model;
+	}
+
+	/**
+	 * Return sanitized document base filename.
+	 *
+	 * @return	string
+	 */
+	public function getDocumentBaseFilename()
+	{
+		return dol_sanitizeFileName($this->ref);
+	}
+
+	/**
+	 * Return document path relative to module output root.
+	 *
+	 * @return	string
+	 */
+	public function getDocumentRelativeDir()
+	{
+		return 'weeklyreport/'.$this->getDocumentBaseFilename();
+	}
+
+	/**
+	 * Return legacy document path relative to module output root.
+	 *
+	 * @return	string
+	 */
+	public function getLegacyDocumentRelativeDir()
+	{
+		return ((int) $this->entity).'/'.$this->getDocumentRelativeDir();
+	}
+
+	/**
+	 * Return legacy document base directory.
+	 *
+	 * @return	string
+	 */
+	public function getLegacyDocumentBaseDir()
+	{
+		global $conf;
+
+		return rtrim((string) $conf->saweeklyreport->dir_output, '/');
+	}
+
+	/**
+	 * Return document base directory for the report owner entity.
+	 *
+	 * @return	string
+	 */
+	public function getDocumentBaseDir()
+	{
+		global $conf;
+
+		$base = '';
+		if (function_exists('getMultidirOutput')) {
+			$base = (string) getMultidirOutput($this, 'saweeklyreport', 0);
+		}
+		if ($base === '' || strpos($base, 'error-') === 0) {
+			$entity = !empty($this->entity) ? (int) $this->entity : (int) $conf->entity;
+			if (!empty($conf->saweeklyreport->multidir_output[$entity])) {
+				$base = $conf->saweeklyreport->multidir_output[$entity];
+			} else {
+				$base = $conf->saweeklyreport->dir_output;
+			}
+		}
+
+		return rtrim($base, '/');
+	}
+
+	/**
 	 * Return document directory.
 	 *
 	 * @return	string
 	 */
 	public function getDocumentDir()
 	{
-		global $conf;
+		return $this->getDocumentBaseDir().'/'.$this->getDocumentRelativeDir();
+	}
 
-		return $conf->saweeklyreport->dir_output.'/'.((int) $this->entity).'/weeklyreport/'.dol_sanitizeFileName($this->ref);
+	/**
+	 * Return legacy document directory.
+	 *
+	 * @return	string
+	 */
+	public function getLegacyDocumentDir()
+	{
+		return $this->getLegacyDocumentBaseDir().'/'.$this->getLegacyDocumentRelativeDir();
+	}
+
+	/**
+	 * Update last document and trigger a CRUD update.
+	 *
+	 * @param	User	$user		User
+	 * @param	string	$filename	File name
+	 * @param	string	$reason		Stable trigger reason
+	 * @return	int
+	 */
+	private function recordGeneratedDocument($user, $filename, $reason)
+	{
+		$oldcopy = clone $this;
+		$this->oldcopy = $oldcopy;
+		$this->last_main_doc = $this->getDocumentRelativeDir().'/'.$filename;
+
+		$this->db->begin();
+		if ($this->update($user, 1) < 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->context['trigger_reason'] = $reason;
+		$this->context['changed_fields'] = array('last_main_doc');
+		$this->context['old_last_main_doc'] = (string) $oldcopy->last_main_doc;
+		$this->context['new_last_main_doc'] = (string) $this->last_main_doc;
+
+		$resulttrigger = $this->call_trigger($this->TRIGGER_PREFIX.'_UPDATE', $user);
+		if ($resulttrigger < 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->db->commit();
+
+		return 1;
 	}
 
 	/**

@@ -18,12 +18,14 @@ if (!$res) {
 	die('Include of main fails');
 }
 
+dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
+
 $langs->loadLangs(array('saweeklyreport@saweeklyreport'));
 
 if (!isModEnabled('saweeklyreport')) {
 	accessforbidden();
 }
-if (!$user->hasRight('saweeklyreport', 'weeklyreport', 'read')) {
+if (!saweeklyreportCanDo($user, null, 'read')) {
 	accessforbidden();
 }
 
@@ -34,7 +36,7 @@ print '<div class="fichecenter">';
 print '<div class="opacitymedium">'.$langs->trans('ModuleSAWeeklyReportDesc').'</div>';
 print '<br>';
 print '<a class="button" href="'.dol_buildpath('/saweeklyreport/weeklyreport_list.php', 1).'">'.$langs->trans('WeeklyReports').'</a>';
-if ($user->hasRight('saweeklyreport', 'weeklyreport', 'write')) {
+if (saweeklyreportCanDo($user, null, 'write')) {
 	print ' <a class="button" href="'.dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?mode=create">'.$langs->trans('NewWeeklyReport').'</a>';
 }
 print '</div>';

@@ -143,6 +143,92 @@ class SAWeeklyReportTicketHelper
 	}
 
 	/**
+	 * Return native ticket data used by the weekly report.
+	 *
+	 * @param	DoliDB	$db			Database handler
+	 * @param	int		$ticketid	Ticket ID
+	 * @return	array<string,string|int>
+	 */
+	public static function getTicketData($db, $ticketid)
+	{
+		if ($ticketid <= 0 || !isModEnabled('ticket')) {
+			return array();
+		}
+
+		dol_include_once('/ticket/class/ticket.class.php');
+		if (!class_exists('Ticket')) {
+			return array();
+		}
+
+		$ticket = new Ticket($db);
+		if ($ticket->fetch($ticketid) <= 0) {
+			return array();
+		}
+		$allowedentities = array_map('intval', explode(',', getEntity('ticket')));
+		if (!empty($ticket->entity) && !in_array((int) $ticket->entity, $allowedentities, true)) {
+			return array();
+		}
+
+		$subject = trim((string) $ticket->subject);
+		$label = $subject !== '' ? $subject : (string) $ticket->ref;
+
+		return array(
+			'id' => (int) $ticket->id,
+			'ref' => (string) $ticket->ref,
+			'type_code' => (string) $ticket->type_code,
+			'category_code' => (string) $ticket->category_code,
+			'severity_code' => (string) $ticket->severity_code,
+			'label' => $label,
+			'description' => self::textFromHtml((string) $ticket->message),
+			'status' => (int) $ticket->fk_statut,
+			'date_service' => !empty($ticket->datec) ? dol_print_date($ticket->datec, '%Y-%m-%d') : '',
+		);
+	}
+
+	/**
+	 * Return read-only data for a report service line.
+	 *
+	 * @param	DoliDB				$db		Database handler
+	 * @param	Translate			$langs	Language handler
+	 * @param	WeeklyReportService	$line	Service line
+	 * @return	array<string,string>
+	 */
+	public static function getServiceLineDisplayData($db, $langs, $line)
+	{
+		$data = array();
+		if ((string) $line->source_element === 'ticket' && (int) $line->source_id > 0) {
+			$data = self::getTicketData($db, (int) $line->source_id);
+		}
+
+		$typecode = (string) ($data['type_code'] ?? $line->service_type);
+		$categorycode = (string) ($data['category_code'] ?? $line->ticket_category_code);
+		$severitycode = (string) ($data['severity_code'] ?? $line->ticket_severity_code);
+
+		return array(
+			'type' => self::getTicketDictionaryLabel($db, $langs, 'c_ticket_type', $typecode),
+			'group' => self::getTicketDictionaryLabel($db, $langs, 'c_ticket_category', $categorycode),
+			'severity' => self::getTicketDictionaryLabel($db, $langs, 'c_ticket_severity', $severitycode),
+			'label' => (string) ($data['label'] ?? $line->label),
+			'description' => self::textFromHtml((string) ($data['description'] ?? $line->description)),
+			'origin' => (string) ($data['ref'] ?? ((string) $line->source_element.((int) $line->source_id > 0 ? ' #'.((int) $line->source_id) : ''))),
+		);
+	}
+
+	/**
+	 * Convert HTML to plain text.
+	 *
+	 * @param	string	$html	HTML
+	 * @return	string
+	 */
+	private static function textFromHtml($html)
+	{
+		$html = str_replace(array('<br>', '<br/>', '<br />', '</p>'), "\n", $html);
+		$text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+		return trim($text);
+	}
+
+	/**
 	 * Return a select2-ready native dictionary select.
 	 *
 	 * @param	DoliDB		$db			Database handler

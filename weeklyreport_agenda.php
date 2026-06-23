@@ -76,10 +76,10 @@ if ($object->fetch($id, $ref) <= 0) {
 if (!isModEnabled('saweeklyreport') || !isModEnabled('agenda')) {
 	accessforbidden();
 }
-if (!$user->hasRight('saweeklyreport', 'weeklyreport', 'read')) {
+if (!saweeklyreportCanDo($user, $object, 'read')) {
 	accessforbidden();
 }
-if (!$user->hasRight('agenda', 'myactions', 'read') && !$user->hasRight('agenda', 'allactions', 'read')) {
+if (empty($user->admin) && !$user->hasRight('agenda', 'myactions', 'read') && !$user->hasRight('agenda', 'allactions', 'read')) {
 	accessforbidden();
 }
 

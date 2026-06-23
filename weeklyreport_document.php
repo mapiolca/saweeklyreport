@@ -42,16 +42,20 @@ if (!isModEnabled('saweeklyreport')) {
 	accessforbidden();
 }
 
-$permissiontoread = $user->hasRight('saweeklyreport', 'weeklyreport', 'read');
-$permissiontoadd = $user->hasRight('saweeklyreport', 'weeklyreport', 'write');
-$permissiontodelete = $user->hasRight('saweeklyreport', 'weeklyreport', 'delete');
+$permissiontoread = saweeklyreportCanDo($user, $object, 'read');
+$permissiontoadd = saweeklyreportCanDo($user, $object, 'write');
+$permissiontodelete = saweeklyreportCanDo($user, $object, 'delete');
 if (!$permissiontoread) {
 	accessforbidden();
 }
 
 $upload_dir = $object->getDocumentDir();
 $modulepart = 'saweeklyreport';
-$relativepathwithnofile = ((int) $object->entity).'/weeklyreport/'.dol_sanitizeFileName($object->ref).'/';
+$relativepathwithnofile = $object->getDocumentRelativeDir().'/';
+if (!is_dir($upload_dir) && is_dir($object->getLegacyDocumentDir())) {
+	$upload_dir = $object->getLegacyDocumentDir();
+	$relativepathwithnofile = $object->getLegacyDocumentRelativeDir().'/';
+}
 
 include DOL_DOCUMENT_ROOT.'/core/actions_linkedfiles.inc.php';
 
