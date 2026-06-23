@@ -57,9 +57,6 @@ function saweeklyreportEditableFields()
 	return array(
 		'label' => 'string',
 		'meeting_duration' => 'integer',
-		'annual_target_power' => 'number',
-		'weekly_target_power' => 'number',
-		'workweeks_elapsed' => 'number',
 		'technician_days' => 'number',
 		'technician_workdays' => 'number',
 		'previous_week_feedback' => 'html',
@@ -104,7 +101,27 @@ function saweeklyreportEditFieldButton($cardurl, $object, $field, $allowed)
 
 	$url = $cardurl.'?id='.((int) $object->id).'&action=editfield&field='.urlencode($field);
 
-	return ' <a class="editfielda reposition" href="'.dol_escape_htmltag($url).'">'.img_edit($langs->trans('Edit')).'</a>';
+	return '<a class="editfielda reposition" href="'.dol_escape_htmltag($url).'">'.img_edit($langs->trans('Edit')).'</a>';
+}
+
+/**
+ * Render field label with the inline edition icon aligned on the right side of the label cell.
+ *
+ * @param	string			$labelhtml	Label HTML
+ * @param	string			$cardurl	URL
+ * @param	WeeklyReport	$object		Report
+ * @param	string			$field		Field
+ * @param	bool			$allowed	Allowed
+ * @return	string
+ */
+function saweeklyreportRenderEditableFieldLabel($labelhtml, $cardurl, $object, $field, $allowed)
+{
+	$button = saweeklyreportEditFieldButton($cardurl, $object, $field, $allowed);
+	if ($button === '') {
+		return $labelhtml;
+	}
+
+	return $labelhtml.'<span class="floatright">'.$button.'</span>';
 }
 
 /**
@@ -141,7 +158,7 @@ function saweeklyreportRenderEditableField($cardurl, $object, $field, $inputhtml
 		return $html;
 	}
 
-	return $displayhtml.saweeklyreportEditFieldButton($cardurl, $object, $field, $inlineeditallowed);
+	return $displayhtml;
 }
 
 /**
@@ -285,9 +302,6 @@ if (empty($reshook)) {
 		}
 		$object->label = GETPOST('label', 'alphanohtml');
 		$object->meeting_duration = GETPOSTINT('meeting_duration');
-		$object->annual_target_power = price2num(GETPOST('annual_target_power', 'alphanohtml'));
-		$object->weekly_target_power = price2num(GETPOST('weekly_target_power', 'alphanohtml'));
-		$object->workweeks_elapsed = price2num(GETPOST('workweeks_elapsed', 'alphanohtml'));
 		$object->technician_days = price2num(GETPOST('technician_days', 'alphanohtml'));
 		$object->technician_workdays = price2num(GETPOST('technician_workdays', 'alphanohtml'));
 		$object->previous_week_feedback = dol_htmlcleanlastbr(GETPOST('previous_week_feedback', 'restricthtml'));
@@ -549,12 +563,14 @@ if ($action === 'create') {
 	print '<div class="fichecenter">';
 	print '<div class="fichehalfleft">';
 	print '<table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefield">'.$langs->trans('Label').'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'label', '<input class="flat minwidth300" name="label" value="'.dol_escape_htmltag($object->label).'">', dol_escape_htmltag($object->label), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td class="titlefield">'.saweeklyreportRenderEditableFieldLabel($langs->trans('Label'), $cardurl, $object, 'label', $inlineeditallowed).'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'label', '<input class="flat minwidth300" name="label" value="'.dol_escape_htmltag($object->label).'">', dol_escape_htmltag($object->label), $inlineeditallowed, $action, $editfield).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Year').'</td><td>'.((int) $object->year).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Week').'</td><td>'.((int) $object->week).'</td></tr>';
 	print '<tr><td>'.$langs->trans('WeeklyReportPeriod').'</td><td>'.dol_print_date($object->period_start, 'day').' - '.dol_print_date($object->period_end, 'day').'</td></tr>';
-	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(4).'</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportMeetingDuration').'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'meeting_duration', '<input class="flat width75 right" name="meeting_duration" value="'.dol_escape_htmltag($object->meeting_duration).'">', ((int) $object->meeting_duration).' '.$langs->trans('Minutes'), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.saweeklyreportRenderEditableFieldLabel($langs->trans('WeeklyReportMeetingDuration'), $cardurl, $object, 'meeting_duration', $inlineeditallowed).'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'meeting_duration', '<input class="flat width75 right" name="meeting_duration" value="'.dol_escape_htmltag($object->meeting_duration).'">', ((int) $object->meeting_duration).' '.$langs->trans('Minutes'), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.saweeklyreportRenderEditableFieldLabel($langs->trans('WeeklyReportTechnicianDays'), $cardurl, $object, 'technician_days', $inlineeditallowed).'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_days', '<input class="flat width100 right" name="technician_days" value="'.dol_escape_htmltag(price($object->technician_days)).'">', price($object->technician_days), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.saweeklyreportRenderEditableFieldLabel($langs->trans('WeeklyReportTechnicianWorkdays'), $cardurl, $object, 'technician_workdays', $inlineeditallowed).'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_workdays', '<input class="flat width100 right" name="technician_workdays" value="'.dol_escape_htmltag(price($object->technician_workdays)).'">', price($object->technician_workdays), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportTechnicianAverage').'</td><td class="right">'.price($object->technician_average).'</td></tr>';
 	print '</table>';
 	print '</div>';
 
@@ -563,10 +579,10 @@ if ($action === 'create') {
 	print '<tr><td class="titlefield">'.$langs->trans('WeeklyReportWeekInstalledPower').'</td><td class="right">'.price($object->week_installed_power).' kWc</td></tr>';
 	print '<tr><td>'.$langs->trans('WeeklyReportMonthInstalledPower').'</td><td class="right">'.price($object->month_installed_power).' kWc</td></tr>';
 	print '<tr><td>'.$langs->trans('WeeklyReportAnnualInstalledPower').'</td><td class="right">'.price($object->annual_installed_power).' kWc</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportAnnualTargetPower').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'annual_target_power', '<input class="flat width100 right" name="annual_target_power" value="'.dol_escape_htmltag(price($object->annual_target_power)).'">', price($object->annual_target_power).' kWc', $inlineeditallowed, $action, $editfield).'</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportWeeklyTargetPower').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'weekly_target_power', '<input class="flat width100 right" name="weekly_target_power" value="'.dol_escape_htmltag(price($object->weekly_target_power)).'">', price($object->weekly_target_power).' kWc', $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportAnnualTargetPower').'</td><td class="right">'.price($object->annual_target_power).' kWc</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportWeeklyTargetPower').'</td><td class="right">'.price($object->weekly_target_power).' kWc</td></tr>';
 	print '<tr><td>'.$langs->trans('WeeklyReportAnnualCompletionRate').'</td><td class="right">'.price($object->annual_completion_rate).'%</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportWorkweeksElapsed').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'workweeks_elapsed', '<input class="flat width100 right" name="workweeks_elapsed" value="'.dol_escape_htmltag(price($object->workweeks_elapsed)).'">', price($object->workweeks_elapsed), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportWorkweeksElapsed').'</td><td class="right">'.price($object->workweeks_elapsed).'</td></tr>';
 	print '<tr><td>'.$langs->trans('WeeklyReportAnnualAveragePower').'</td><td class="right">'.price($object->annual_average_power).' kWc/sem.</td></tr>';
 	print '</table>';
 	print '</div>';
@@ -575,15 +591,8 @@ if ($action === 'create') {
 
 	print '<br>';
 	print '<table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefield">'.$langs->trans('WeeklyReportTechnicianDays').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_days', '<input class="flat width100 right" name="technician_days" value="'.dol_escape_htmltag(price($object->technician_days)).'">', price($object->technician_days), $inlineeditallowed, $action, $editfield).'</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportTechnicianWorkdays').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_workdays', '<input class="flat width100 right" name="technician_workdays" value="'.dol_escape_htmltag(price($object->technician_workdays)).'">', price($object->technician_workdays), $inlineeditallowed, $action, $editfield).'</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportTechnicianAverage').'</td><td class="right">'.price($object->technician_average).'</td></tr>';
-	print '</table>';
-
-	print '<br>';
-	print '<table class="border centpercent tableforfield">';
 	foreach (array('previous_week_feedback', 'field_returns', 'current_week_goal', 'safety_message', 'vehicle_loading_reminder') as $field) {
-		print '<tr><td class="titlefield">'.$langs->trans($object->fields[$field]['label']).'</td><td>';
+		print '<tr><td class="titlefield">'.saweeklyreportRenderEditableFieldLabel($langs->trans($object->fields[$field]['label']), $cardurl, $object, $field, $inlineeditallowed).'</td><td>';
 		$editorhtml = saweeklyreportRenderEditor($field, (string) $object->$field, ROWS_3);
 		$displayhtml = saweeklyreportRenderHtmlValue((string) $object->$field);
 		print saweeklyreportRenderEditableField($cardurl, $object, $field, $editorhtml, $displayhtml, $inlineeditallowed, $action, $editfield);
