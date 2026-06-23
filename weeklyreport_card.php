@@ -102,7 +102,9 @@ function saweeklyreportEditFieldButton($cardurl, $object, $field, $allowed)
 		return '';
 	}
 
-	return ' '.dolGetButtonTitle($langs->trans('Edit'), '', 'fa fa-pencil imgforviewmode', $cardurl.'?id='.((int) $object->id).'&action=editfield&field='.urlencode($field));
+	$url = $cardurl.'?id='.((int) $object->id).'&action=editfield&field='.urlencode($field);
+
+	return ' <a class="editfielda reposition" href="'.dol_escape_htmltag($url).'">'.img_edit($langs->trans('Edit')).'</a>';
 }
 
 /**
@@ -132,8 +134,8 @@ function saweeklyreportRenderEditableField($cardurl, $object, $field, $inputhtml
 		$html .= '<input type="hidden" name="id" value="'.((int) $object->id).'">';
 		$html .= '<input type="hidden" name="field" value="'.dol_escape_htmltag($field).'">';
 		$html .= $inputhtml;
-		$html .= '<div class="center"><input type="submit" class="button small" value="'.$langs->trans('Save').'"> ';
-		$html .= '<a class="button small" href="'.$cardurl.'?id='.((int) $object->id).'">'.$langs->trans('Cancel').'</a></div>';
+		$html .= '<div class="center"><input type="submit" class="button small" value="'.dol_escape_htmltag($langs->trans('Save')).'"> ';
+		$html .= '<a class="button small" href="'.dol_escape_htmltag($cardurl.'?id='.((int) $object->id)).'">'.dol_escape_htmltag($langs->trans('Cancel')).'</a></div>';
 		$html .= '</form>';
 
 		return $html;
@@ -547,48 +549,12 @@ if ($action === 'create') {
 	print '<div class="fichecenter">';
 	print '<div class="fichehalfleft">';
 	print '<table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefield">'.$langs->trans('Label').'</td><td>';
-	if ($action === 'edit' || ($action === 'editfield' && $editfield === 'label')) {
-		if ($action === 'editfield') {
-			print '<form method="POST" action="'.dol_escape_htmltag($cardurl).'">';
-			print '<input type="hidden" name="token" value="'.newToken().'">';
-			print '<input type="hidden" name="action" value="updatefield">';
-			print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
-			print '<input type="hidden" name="field" value="label">';
-		}
-		print '<input class="flat minwidth300" name="label" value="'.dol_escape_htmltag($object->label).'">';
-		if ($action === 'editfield') {
-			print '<input type="submit" class="button small" value="'.$langs->trans('Save').'"> ';
-			print '<a class="button small" href="'.$cardurl.'?id='.((int) $object->id).'">'.$langs->trans('Cancel').'</a>';
-			print '</form>';
-		}
-	} else {
-		print dol_escape_htmltag($object->label).saweeklyreportEditFieldButton($cardurl, $object, 'label', $inlineeditallowed);
-	}
-	print '</td></tr>';
+	print '<tr><td class="titlefield">'.$langs->trans('Label').'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'label', '<input class="flat minwidth300" name="label" value="'.dol_escape_htmltag($object->label).'">', dol_escape_htmltag($object->label), $inlineeditallowed, $action, $editfield).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Year').'</td><td>'.((int) $object->year).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Week').'</td><td>'.((int) $object->week).'</td></tr>';
 	print '<tr><td>'.$langs->trans('WeeklyReportPeriod').'</td><td>'.dol_print_date($object->period_start, 'day').' - '.dol_print_date($object->period_end, 'day').'</td></tr>';
 	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(4).'</td></tr>';
-	print '<tr><td>'.$langs->trans('WeeklyReportMeetingDuration').'</td><td>';
-	if ($action === 'edit' || ($action === 'editfield' && $editfield === 'meeting_duration')) {
-		if ($action === 'editfield') {
-			print '<form method="POST" action="'.dol_escape_htmltag($cardurl).'">';
-			print '<input type="hidden" name="token" value="'.newToken().'">';
-			print '<input type="hidden" name="action" value="updatefield">';
-			print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
-			print '<input type="hidden" name="field" value="meeting_duration">';
-		}
-		print '<input class="flat width75 right" name="meeting_duration" value="'.dol_escape_htmltag($object->meeting_duration).'">';
-		if ($action === 'editfield') {
-			print '<input type="submit" class="button small" value="'.$langs->trans('Save').'"> ';
-			print '<a class="button small" href="'.$cardurl.'?id='.((int) $object->id).'">'.$langs->trans('Cancel').'</a>';
-			print '</form>';
-		}
-	} else {
-		print ((int) $object->meeting_duration).' '.$langs->trans('Minutes').saweeklyreportEditFieldButton($cardurl, $object, 'meeting_duration', $inlineeditallowed);
-	}
-	print '</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportMeetingDuration').'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'meeting_duration', '<input class="flat width75 right" name="meeting_duration" value="'.dol_escape_htmltag($object->meeting_duration).'">', ((int) $object->meeting_duration).' '.$langs->trans('Minutes'), $inlineeditallowed, $action, $editfield).'</td></tr>';
 	print '</table>';
 	print '</div>';
 
@@ -609,7 +575,9 @@ if ($action === 'create') {
 
 	print '<br>';
 	print '<table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefield">'.$langs->trans('WeeklyReportTechnicianDays').'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_days', '<input class="flat width100 right" name="technician_days" value="'.dol_escape_htmltag(price($object->technician_days)).'">', price($object->technician_days), $inlineeditallowed, $action, $editfield).'</td><td>'.$langs->trans('WeeklyReportTechnicianWorkdays').'</td><td>'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_workdays', '<input class="flat width100 right" name="technician_workdays" value="'.dol_escape_htmltag(price($object->technician_workdays)).'">', price($object->technician_workdays), $inlineeditallowed, $action, $editfield).'</td><td>'.$langs->trans('WeeklyReportTechnicianAverage').'</td><td>'.price($object->technician_average).'</td></tr>';
+	print '<tr><td class="titlefield">'.$langs->trans('WeeklyReportTechnicianDays').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_days', '<input class="flat width100 right" name="technician_days" value="'.dol_escape_htmltag(price($object->technician_days)).'">', price($object->technician_days), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportTechnicianWorkdays').'</td><td class="right">'.saweeklyreportRenderEditableField($cardurl, $object, 'technician_workdays', '<input class="flat width100 right" name="technician_workdays" value="'.dol_escape_htmltag(price($object->technician_workdays)).'">', price($object->technician_workdays), $inlineeditallowed, $action, $editfield).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WeeklyReportTechnicianAverage').'</td><td class="right">'.price($object->technician_average).'</td></tr>';
 	print '</table>';
 
 	print '<br>';
@@ -722,7 +690,6 @@ if ($action === 'create') {
 	if ($action !== 'edit') {
 		print '<div class="tabsAction">';
 		if ($permissiontoadd && (int) $object->status === WeeklyReport::STATUS_DRAFT) {
-			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&mode=edit">'.$langs->trans('Modify').'</a>';
 			print '<a class="butAction" href="'.$cardurl.'?id='.((int) $object->id).'&action=refreshdata&token='.newToken().'">'.$langs->trans('WeeklyReportRefreshData').'</a>';
 		}
 		if ($permissiontovalidate && (int) $object->status === WeeklyReport::STATUS_VALIDATED) {
