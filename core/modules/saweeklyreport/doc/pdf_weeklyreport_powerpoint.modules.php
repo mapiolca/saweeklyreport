@@ -112,6 +112,16 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	private $printedfooters = array();
 
 	/**
+	 * @var string
+	 */
+	private $pdffont = '';
+
+	/**
+	 * @var bool
+	 */
+	private $pdffontisunicode = false;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param	DoliDB	$db	Database handler
@@ -184,17 +194,19 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 			return -1;
 		}
 
+		$data = $object->getDocumentData($outputlangs);
+		$rows = $object->getDocumentServiceRows($outputlangs);
 		$pdf = pdf_getInstance($this->format);
 		$defaultfontsize = pdf_getPDFFontSize($outputlangs);
+		$this->pdffont = $this->selectPdfFont($outputlangs, $data, $rows);
+		$this->pdffontisunicode = $this->isUnicodePdfFont($this->pdffont);
 		$this->printedfooters = array();
-		$heightforfooter = $this->getFooterHeight();
 		if (class_exists('TCPDF')) {
 			$pdf->setPrintHeader(false);
 			$pdf->setPrintFooter(false);
 		}
 		$pdf->SetMargins($this->marge_gauche, $this->marge_haute, $this->marge_droite);
-		$pdf->SetAutoPageBreak(true, $heightforfooter);
-		$pdf->SetFont(pdf_getPDFFont($outputlangs), '', $defaultfontsize);
+		$pdf->SetFont($this->pdffont, '', $defaultfontsize);
 		$pdf->SetTitle($this->txt($outputlangs, $object->ref));
 		$pdf->SetSubject($this->txt($outputlangs, $outputlangs->transnoentities('WeeklyReport')));
 		$pdf->SetCreator('Dolibarr '.DOL_VERSION);
@@ -205,10 +217,9 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 
 		$pdf->Open();
 		$pdf->AddPage();
-		$pdf->setPageOrientation('', true, $heightforfooter);
+		$heightforfooter = $this->getFooterHeight($pdf, $object, $outputlangs, 0);
+		$this->applyFooterReservation($pdf, $heightforfooter);
 
-		$data = $object->getDocumentData($outputlangs);
-		$rows = $object->getDocumentServiceRows($outputlangs);
 		$this->renderHeader($pdf, $object, $outputlangs, $data, $defaultfontsize);
 		$this->renderMetrics($pdf, $outputlangs, $data, $defaultfontsize);
 		$this->renderTextSection($pdf, $object, $outputlangs, $outputlangs->transnoentities('WeeklyReportPreviousWeekFeedback'), $data['previous_week_feedback'], $defaultfontsize);
@@ -418,26 +429,66 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	 */
 	private function ensureSpace(&$pdf, $object, $outputlangs, $neededheight)
 	{
-		$heightforfooter = $this->getFooterHeight();
+		$heightforfooter = $this->getFooterHeight($pdf, $object, $outputlangs, 0);
 		$limit = $this->page_hauteur - $heightforfooter;
 		if ($pdf->GetY() + $neededheight > $limit) {
 			$this->renderPageFootOnce($pdf, $object, $outputlangs, 1);
 			$pdf->AddPage();
-			$pdf->setPageOrientation('', true, $heightforfooter);
+			$this->applyFooterReservation($pdf, $heightforfooter);
 		}
 	}
 
 	/**
 	 * Return reserved footer height.
 	 *
+	 * @param	TCPDF		$pdf			PDF
+	 * @param	WeeklyReport	$object		Report
+	 * @param	Translate	$outputlangs	Output language
+	 * @param	int			$hidefreetext	Hide free text
 	 * @return	int
 	 */
-	private function getFooterHeight()
+	private function getFooterHeight(&$pdf, $object, $outputlangs, $hidefreetext = 0)
 	{
-		$freetextheight = getDolGlobalInt('MAIN_PDF_FREETEXT_HEIGHT', 5);
-		$companyheight = getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS') ? 18 : 28;
+		$dims = $pdf->getPageDimensions();
+		$usablewidth = isset($dims['wk'], $dims['lm'], $dims['rm']) ? (float) $dims['wk'] - (float) $dims['lm'] - (float) $dims['rm'] : $this->page_largeur - $this->marge_gauche - $this->marge_droite;
+		$freetextheight = 0.0;
+		$line = empty($hidefreetext) ? $this->getFooterFreeText($object, $outputlangs) : '';
+		if ($line !== '') {
+			if (getDolGlobalString('PDF_ALLOW_HTML_FOR_FREE_TEXT')) {
+				$freetextheight = (float) pdfGetHeightForHtmlContent($pdf, dol_htmlentitiesbr($line, 1, 'UTF-8', 0));
+			} else {
+				$width = 20000;
+				if (getDolGlobalString('MAIN_USE_AUTOWRAP_ON_FREETEXT')) {
+					$width = max(20, $usablewidth);
+				}
+				$freetextheight = (float) $pdf->getStringHeight($width, $line);
+			}
+		}
 
-		return (int) ($this->marge_basse + $companyheight + max(12, $freetextheight));
+		$freetextheight = max((float) getDolGlobalInt('MAIN_PDF_FREETEXT_HEIGHT', 5), $freetextheight);
+		$showdetails = getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS');
+		$companyheight = $showdetails ? 24 : 14;
+		$hookreserve = 18;
+		$pagenumberheight = 5;
+		$safetyheight = 8;
+		$height = (float) $this->marge_basse + $freetextheight + $companyheight + $hookreserve + $pagenumberheight + $safetyheight;
+		$minheight = $showdetails ? 62 : 52;
+		$maxheight = max(60, $this->page_hauteur - $this->marge_haute - 70);
+
+		return (int) min($maxheight, max($minheight, ceil($height)));
+	}
+
+	/**
+	 * Apply the footer reservation to TCPDF page break settings.
+	 *
+	 * @param	TCPDF	$pdf				PDF
+	 * @param	int		$heightforfooter	Footer height
+	 * @return	void
+	 */
+	private function applyFooterReservation(&$pdf, $heightforfooter)
+	{
+		$pdf->SetAutoPageBreak(true, $heightforfooter);
+		$pdf->setPageOrientation('', true, $heightforfooter);
 	}
 
 	/**
@@ -456,7 +507,10 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 			return;
 		}
 
+		$heightforfooter = $this->getFooterHeight($pdf, $object, $outputlangs, $hidefreetext);
+		$pdf->SetAutoPageBreak(false, 0);
 		$this->_pagefoot($pdf, $object, $outputlangs, $hidefreetext);
+		$this->applyFooterReservation($pdf, $heightforfooter);
 		$this->printedfooters[$page] = true;
 	}
 
@@ -478,6 +532,145 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	}
 
 	/**
+	 * Select the PDF font, falling back to DejaVuSans for Unicode content when possible.
+	 *
+	 * @param	Translate						$outputlangs	Output language
+	 * @param	array<string,string>				$data			Document data
+	 * @param	array<int,array<string,string>>	$rows			Service rows
+	 * @return	string
+	 */
+	private function selectPdfFont($outputlangs, $data, $rows)
+	{
+		$font = pdf_getPDFFont($outputlangs);
+		if (getDolGlobalString('MAIN_PDF_FORCE_FONT') || $this->isUnicodePdfFont($font)) {
+			return $font;
+		}
+
+		if ($this->documentNeedsUnicodePdfFont($data, $rows) || $this->textNeedsUnicodePdfFont(getDolGlobalString('SAWEEKLYREPORT_FREE_TEXT'))) {
+			if ($this->isTcpdfFontAvailable('dejavusans')) {
+				return 'dejavusans';
+			}
+		}
+
+		return $font;
+	}
+
+	/**
+	 * Check whether document content needs a Unicode PDF font.
+	 *
+	 * @param	array<string,string>				$data	Document data
+	 * @param	array<int,array<string,string>>	$rows	Service rows
+	 * @return	bool
+	 */
+	private function documentNeedsUnicodePdfFont($data, $rows)
+	{
+		foreach ($data as $value) {
+			if ($this->textNeedsUnicodePdfFont($value)) {
+				return true;
+			}
+		}
+		foreach ($rows as $row) {
+			foreach ($row as $value) {
+				if ($this->textNeedsUnicodePdfFont($value)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check whether a text contains emoji or characters outside the Latin-1 range.
+	 *
+	 * @param	string	$text	Text
+	 * @return	bool
+	 */
+	private function textNeedsUnicodePdfFont($text)
+	{
+		$text = (string) $text;
+		if ($text === '' || preg_match('/^/u', $text) !== 1) {
+			return false;
+		}
+
+		if (preg_match('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}]/u', $text) === 1) {
+			return true;
+		}
+
+		return preg_match('/[^\x{0000}-\x{00FF}]/u', $text) === 1;
+	}
+
+	/**
+	 * Check whether a configured TCPDF font can render UTF-8 text.
+	 *
+	 * @param	string	$font	Font name
+	 * @return	bool
+	 */
+	private function isUnicodePdfFont($font)
+	{
+		$font = strtolower((string) $font);
+
+		return strpos($font, 'dejavu') === 0
+			|| strpos($font, 'free') === 0
+			|| strpos($font, 'cid') === 0
+			|| in_array($font, array('stsongstdlight', 'msungstdlight'), true);
+	}
+
+	/**
+	 * Check whether a TCPDF font definition is available locally.
+	 *
+	 * @param	string	$font	Font name
+	 * @return	bool
+	 */
+	private function isTcpdfFontAvailable($font)
+	{
+		$filename = strtolower((string) $font).'.php';
+		$fontdirs = array();
+		if (defined('K_PATH_FONTS')) {
+			$fontdirs[] = K_PATH_FONTS;
+		}
+		if (defined('TCPDF_FONTS')) {
+			$fontdirs[] = TCPDF_FONTS;
+		}
+		$fontdirs[] = DOL_DOCUMENT_ROOT.'/includes/tecnickcom/tcpdf/fonts/';
+
+		foreach ($fontdirs as $fontdir) {
+			$path = rtrim((string) $fontdir, '/\\').'/'.$filename;
+			if (is_readable($path)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Return substituted footer free text.
+	 *
+	 * @param	WeeklyReport	$object			Report
+	 * @param	Translate		$outputlangs	Output language
+	 * @return	string
+	 */
+	private function getFooterFreeText($object, $outputlangs)
+	{
+		$freetext = getDolGlobalString('SAWEEKLYREPORT_FREE_TEXT');
+		if ($freetext === '') {
+			return '';
+		}
+
+		$substitutionarray = pdf_getSubstitutionArray($outputlangs, null, $object);
+		if (is_object($this->emetteur)) {
+			$substitutionarray['__FROM_NAME__'] = $this->emetteur->name;
+			$substitutionarray['__FROM_EMAIL__'] = $this->emetteur->email;
+		}
+		complete_substitutions_array($substitutionarray, $outputlangs, $object);
+		$line = make_substitutions($freetext, $substitutionarray, $outputlangs);
+		$line = preg_replace('/(<img.*src=")[^\"]*viewimage\.php[^\"]*modulepart=medias[^\"]*file=([^\"]*)("[^\/]*\/>)/', '\1file:/'.DOL_DATA_ROOT.'/medias/\2\3', (string) $line);
+
+		return $this->txt($outputlangs, (string) $line);
+	}
+
+	/**
 	 * Convert text to output charset.
 	 *
 	 * @param	Translate	$outputlangs	Output language
@@ -486,6 +679,11 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	 */
 	private function txt($outputlangs, $text)
 	{
-		return $outputlangs->convToOutputCharset((string) $text);
+		$text = (string) $text;
+		if ($this->pdffontisunicode && $this->textNeedsUnicodePdfFont($text)) {
+			return $text;
+		}
+
+		return $outputlangs->convToOutputCharset($text);
 	}
 }
