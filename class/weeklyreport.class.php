@@ -481,7 +481,10 @@ class WeeklyReport extends CommonObject
 			$this->vehicle_loading_reminder = getDolGlobalString('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'Pour rappel : réaliser le chargement des véhicules la veille du chantier.');
 		}
 		if (empty($this->model_pptx)) {
-			$this->model_pptx = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+			$this->model_pptx = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF');
+			if (empty($this->model_pptx)) {
+				$this->model_pptx = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+			}
 		}
 		$this->model_pdf = $this->model_pptx;
 
@@ -1262,12 +1265,20 @@ class WeeklyReport extends CommonObject
 	 */
 	public function generateDocument($modele, $outputlangs, $hidedetails = 0, $hidedesc = 0, $hideref = 0, $moreparams = null)
 	{
-		if (!empty($modele)) {
-			$this->model_pptx = $modele;
-			$this->model_pdf = $modele;
+		$model = (string) $modele;
+		if ($model === '') {
+			$model = !empty($this->model_pdf) ? (string) $this->model_pdf : getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF');
+			if ($model === '') {
+				$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+			}
 		}
 
-		if ((string) $modele === self::DOC_MODEL_PDF_TCPDF || (string) $this->model_pdf === self::DOC_MODEL_PDF_TCPDF) {
+		if ($model !== '') {
+			$this->model_pptx = $model;
+			$this->model_pdf = $model;
+		}
+
+		if ($model === self::DOC_MODEL_PDF_TCPDF || (string) $this->model_pdf === self::DOC_MODEL_PDF_TCPDF) {
 			return $this->generatePdfTcpdf($outputlangs, $hidedetails, $hidedesc, $hideref);
 		}
 

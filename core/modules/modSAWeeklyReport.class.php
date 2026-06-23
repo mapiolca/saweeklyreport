@@ -84,10 +84,12 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->const = array(
 			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON', 'chaine', 'mod_weeklyreport_standard', 'Weekly report numbering module', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLYREPORT_MASK', 'chaine', 'SAWR-{YYYY}-S{WW}', 'Weekly report numbering mask', 0, 'current', 1),
+			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', 'chaine', 'pdf_weeklyreport_powerpoint', 'Weekly report PDF document model', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'chaine', 'weekly_report_standard', 'Weekly report PPTX model', 0, 'current', 1),
 			array('SAWEEKLYREPORT_ANNUAL_TARGET_POWER', 'chaine', '846', 'Annual kWc target', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLY_TARGET_POWER', 'chaine', '18', 'Weekly kWc target', 0, 'current', 1),
 			array('SAWEEKLYREPORT_MEETING_DURATION', 'chaine', '15', 'Meeting duration in minutes', 0, 'current', 1),
+			array('SAWEEKLYREPORT_FREE_TEXT', 'chaine', '', 'Weekly report PDF free text', 0, 'current', 1),
 			array('SAWEEKLYREPORT_PREFILL_FICHINTER', 'chaine', '1', 'Prefill interventions', 0, 'current', 1),
 			array('SAWEEKLYREPORT_PREFILL_TICKET', 'chaine', '1', 'Prefill tickets', 0, 'current', 1),
 			array('SAWEEKLYREPORT_TICKET_TYPE_CODES', 'chaine', '', 'Ticket request types to prefill', 0, 'current', 1),

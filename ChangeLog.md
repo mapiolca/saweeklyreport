@@ -2,6 +2,8 @@
 
 ## 0.1.0 - 2026-06-08
 
+- Correction du modèle PDF TCPDF : gestion best-effort des émojis, chargement des traductions du pied de page et pagination Dolibarr standard.
+- Ajout des blocs natifs de réglage pour la numérotation et les modèles de document PDF des rapports hebdomadaires.
 - Correction des droits documentaires avec accès administrateur, hook `checkSecureAccess` et chemins `weeklyreport/<ref>` compatibles avec l'ancien format `entity/weeklyreport/<ref>`.
 - Ajout du modèle de document PDF TCPDF `pdf_weeklyreport_powerpoint` basé sur les mêmes données que le PowerPoint.
 - Ajout de la puissance crête posée dans le bloc PowerPoint/PDF "Pose semaine dernière".

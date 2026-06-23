@@ -107,6 +107,21 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	public $watermark = '';
 
 	/**
+	 * @var string
+	 */
+	public $scandir = '';
+
+	/**
+	 * @var int
+	 */
+	public $option_multilang = 1;
+
+	/**
+	 * @var int
+	 */
+	public $option_draft_watermark = 0;
+
+	/**
 	 * @var array<int,bool>
 	 */
 	private $printedfooters = array();
@@ -166,7 +181,7 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 		if (!is_object($outputlangs)) {
 			$outputlangs = $langs;
 		}
-		$outputlangs->loadLangs(array('main', 'saweeklyreport@saweeklyreport'));
+		$this->loadPdfLangs($outputlangs);
 		if (empty($object->id)) {
 			$this->error = 'ErrorObjectMustBeFetched';
 			return -1;
@@ -229,10 +244,9 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 		$this->renderTextSection($pdf, $object, $outputlangs, $outputlangs->transnoentities('WeeklyReportSafetyMessage'), $data['safety_message'], $defaultfontsize);
 		$this->renderTextSection($pdf, $object, $outputlangs, $outputlangs->transnoentities('WeeklyReportVehicleLoadingReminder'), $data['technician_detail'], $defaultfontsize);
 
-		$pagecount = $pdf->getNumPages();
-		for ($page = 1; $page <= $pagecount; $page++) {
-			$pdf->setPage($page);
-			$this->renderPageFootOnce($pdf, $object, $outputlangs, ($page < $pagecount ? 1 : 0));
+		$this->renderPageFootOnce($pdf, $object, $outputlangs, 0);
+		if (method_exists($pdf, 'AliasNbPages')) {
+			$pdf->AliasNbPages();
 		}
 
 		$pdf->Output($file, 'F');
@@ -527,8 +541,37 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	protected function _pagefoot(&$pdf, $object, $outputlangs, $hidefreetext = 0)
 	{
 		// phpcs:enable
+		global $conf;
+
+		$this->loadPdfLangs($outputlangs);
 		$showdetails = getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS');
-		return pdf_pagefoot($pdf, $outputlangs, 'SAWEEKLYREPORT_FREE_TEXT', $this->emetteur, $this->marge_basse, $this->marge_gauche, $this->page_hauteur, $object, $showdetails, $hidefreetext, $this->page_largeur, $this->watermark);
+		$oldfreetext = getDolGlobalString('SAWEEKLYREPORT_FREE_TEXT');
+		$hasoverride = false;
+		if ($oldfreetext !== '' && $this->textContainsEmoji($oldfreetext) && !$this->canCurrentFontRenderEmoji()) {
+			$conf->global->SAWEEKLYREPORT_FREE_TEXT = $this->normalizeEmojiForPdf($oldfreetext);
+			$hasoverride = true;
+		}
+
+		$result = pdf_pagefoot($pdf, $outputlangs, 'SAWEEKLYREPORT_FREE_TEXT', $this->emetteur, $this->marge_basse, $this->marge_gauche, $this->page_hauteur, $object, $showdetails, $hidefreetext, $this->page_largeur, $this->watermark);
+
+		if ($hasoverride) {
+			$conf->global->SAWEEKLYREPORT_FREE_TEXT = $oldfreetext;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Load languages required by Dolibarr PDF helpers.
+	 *
+	 * @param	Translate	$outputlangs	Output language
+	 * @return	void
+	 */
+	private function loadPdfLangs($outputlangs)
+	{
+		if (is_object($outputlangs)) {
+			$outputlangs->loadLangs(array('main', 'companies', 'dict', 'bills', 'products', 'saweeklyreport@saweeklyreport'));
+		}
 	}
 
 	/**
@@ -593,11 +636,27 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 			return false;
 		}
 
-		if (preg_match('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}]/u', $text) === 1) {
+		if ($this->textContainsEmoji($text)) {
 			return true;
 		}
 
 		return preg_match('/[^\x{0000}-\x{00FF}]/u', $text) === 1;
+	}
+
+	/**
+	 * Check whether a text contains emoji codepoints.
+	 *
+	 * @param	string	$text	Text
+	 * @return	bool
+	 */
+	private function textContainsEmoji($text)
+	{
+		$text = (string) $text;
+		if ($text === '' || preg_match('/^/u', $text) !== 1) {
+			return false;
+		}
+
+		return preg_match('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}]/u', $text) === 1;
 	}
 
 	/**
@@ -645,6 +704,72 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	}
 
 	/**
+	 * Check whether the selected font is expected to contain emoji glyphs.
+	 *
+	 * @return	bool
+	 */
+	private function canCurrentFontRenderEmoji()
+	{
+		$font = strtolower((string) $this->pdffont);
+
+		return preg_match('/(emoji|symbola|seguiemj|notoemoji|notocoloremoji|emojione|applecoloremoji)/', $font) === 1;
+	}
+
+	/**
+	 * Replace emojis by readable text when TCPDF cannot render their glyphs.
+	 *
+	 * @param	string	$text	Text
+	 * @return	string
+	 */
+	private function normalizeEmojiForPdf($text)
+	{
+		$text = strtr((string) $text, array(
+			'✅' => '[OK]',
+			'✔️' => '[OK]',
+			'✔' => '[OK]',
+			'☑️' => '[OK]',
+			'☑' => '[OK]',
+			'⚠️' => '[Attention]',
+			'⚠' => '[Attention]',
+			'🔧' => '[Maintenance]',
+			'🛠️' => '[Maintenance]',
+			'🛠' => '[Maintenance]',
+			'🙂' => '[Sourire]',
+			'😀' => '[Sourire]',
+			'😃' => '[Sourire]',
+			'😄' => '[Sourire]',
+			'😅' => '[Sourire]',
+			'😊' => '[Sourire]',
+			'📌' => '[Point]',
+			'📍' => '[Point]',
+			'❌' => '[KO]',
+			'🚧' => '[Chantier]',
+			'🏠' => '[Maison]',
+			'☀️' => '[Soleil]',
+			'☀' => '[Soleil]',
+			'📅' => '[Date]',
+			'📈' => '[Hausse]',
+			'🔋' => '[Batterie]',
+			'⚡' => '[Energie]',
+			'💡' => '[Info]',
+			'👍' => '[OK]',
+			'👷' => '[Technicien]',
+			'➡️' => '->',
+			'➡' => '->',
+			'⬅️' => '<-',
+			'⬅' => '<-',
+			'⬆️' => '^',
+			'⬆' => '^',
+			'⬇️' => 'v',
+			'⬇' => 'v',
+		));
+		$text = preg_replace('/[\x{FE0E}\x{FE0F}]/u', '', $text);
+		$text = preg_replace('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}]/u', '[emoji]', (string) $text);
+
+		return (string) $text;
+	}
+
+	/**
 	 * Return substituted footer free text.
 	 *
 	 * @param	WeeklyReport	$object			Report
@@ -680,6 +805,9 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 	private function txt($outputlangs, $text)
 	{
 		$text = (string) $text;
+		if ($this->textContainsEmoji($text) && !$this->canCurrentFontRenderEmoji()) {
+			$text = $this->normalizeEmojiForPdf($text);
+		}
 		if ($this->pdffontisunicode && $this->textNeedsUnicodePdfFont($text)) {
 			return $text;
 		}

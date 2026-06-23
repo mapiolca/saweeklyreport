@@ -22,26 +22,33 @@ abstract class ModelePDFWeeklyReport
 
 		// phpcs:enable
 		$list = array();
+		$usednativehelper = false;
 
 		include_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
 		if (function_exists('getListOfModels')) {
 			$tmp = getListOfModels($db, 'weeklyreport', $maxfilenamelength);
 			if (is_array($tmp)) {
 				$list = $tmp;
+				$usednativehelper = true;
 			}
 		}
 
-		if (empty($list)) {
-			$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
-			$list[$model] = $model;
+		$pptxmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+		if ($pptxmodel !== '') {
+			$list[$pptxmodel] = $pptxmodel;
+		}
+		$pdfmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', (!$usednativehelper ? 'pdf_weeklyreport_powerpoint' : ''));
+		if ($pdfmodel !== '') {
+			$list[$pdfmodel] = $pdfmodel;
 		}
 		if (is_object($langs)) {
 			$langs->load('saweeklyreport@saweeklyreport');
-			$list['weekly_report_standard'] = $langs->trans('WeeklyReportPptxStandardModel');
-			$list['pdf_weeklyreport_powerpoint'] = $langs->trans('WeeklyReportPdfTcpdfModel');
-		} else {
-			$list['weekly_report_standard'] = 'weekly_report_standard';
-			$list['pdf_weeklyreport_powerpoint'] = 'pdf_weeklyreport_powerpoint';
+			if (isset($list['weekly_report_standard'])) {
+				$list['weekly_report_standard'] = $langs->trans('WeeklyReportPptxStandardModel');
+			}
+			if (isset($list['pdf_weeklyreport_powerpoint'])) {
+				$list['pdf_weeklyreport_powerpoint'] = $langs->trans('WeeklyReportPdfTcpdfModel');
+			}
 		}
 
 		return $list;
