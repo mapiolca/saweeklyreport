@@ -112,6 +112,107 @@ if (!function_exists('saweeklyreportGetDocumentModelType')) {
 	}
 }
 
+if (!function_exists('saweeklyreportIsDocumentModelActive')) {
+	/**
+	 * Check if a document model is active for current entity.
+	 *
+	 * @param	DoliDB	$db				Database handler
+	 * @param	string	$documenttype	Document type
+	 * @param	string	$model			Document model key
+	 * @return	bool
+	 */
+	function saweeklyreportIsDocumentModelActive($db, $documenttype, $model)
+	{
+		global $conf;
+
+		$model = (string) $model;
+		if ($model === '') {
+			return false;
+		}
+
+		$sql = "SELECT rowid";
+		$sql .= " FROM ".$db->prefix()."document_model";
+		$sql .= " WHERE type = '".$db->escape($documenttype)."'";
+		$sql .= " AND entity = ".((int) $conf->entity);
+		$sql .= " AND nom = '".$db->escape($model)."'";
+		$resql = $db->query($sql);
+		if (!$resql) {
+			return false;
+		}
+		$isactive = ($db->num_rows($resql) > 0);
+		$db->free($resql);
+
+		return $isactive;
+	}
+}
+
+if (!function_exists('saweeklyreportCleanupLegacyDocumentDefaults')) {
+	/**
+	 * Remove legacy per-format document default constants.
+	 *
+	 * @param	DoliDB	$db	Database handler
+	 * @return	void
+	 */
+	function saweeklyreportCleanupLegacyDocumentDefaults($db)
+	{
+		global $conf;
+
+		dolibarr_del_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', (int) $conf->entity);
+		dolibarr_del_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', (int) $conf->entity);
+		unset($conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF, $conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX);
+	}
+}
+
+if (!function_exists('saweeklyreportGetDefaultDocumentModel')) {
+	/**
+	 * Return and optionally migrate the unique default document model.
+	 *
+	 * @param	DoliDB	$db				Database handler
+	 * @param	string	$documenttype	Document type
+	 * @param	bool	$persist		Persist migration
+	 * @return	string
+	 */
+	function saweeklyreportGetDefaultDocumentModel($db, $documenttype, $persist = false)
+	{
+		global $conf;
+
+		$default = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC');
+		if ($default !== '') {
+			return $default;
+		}
+
+		$legacycandidates = array(
+			getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF'),
+			getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX'),
+		);
+		foreach ($legacycandidates as $candidate) {
+			if (saweeklyreportIsDocumentModelActive($db, $documenttype, $candidate)) {
+				$default = (string) $candidate;
+				break;
+			}
+		}
+		if ($default === '') {
+			foreach (array('pdf_weeklyreport_powerpoint', 'weekly_report_standard') as $candidate) {
+				if (saweeklyreportIsDocumentModelActive($db, $documenttype, $candidate)) {
+					$default = $candidate;
+					break;
+				}
+			}
+		}
+		if ($default === '') {
+			$default = 'pdf_weeklyreport_powerpoint';
+		}
+
+		if ($persist) {
+			dolibarr_set_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC', $default, 'chaine', 0, '', (int) $conf->entity);
+			$conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC = $default;
+			saweeklyreportCleanupLegacyDocumentDefaults($db);
+		}
+
+		return $default;
+	}
+}
+
 if (in_array($action, array('setmod', 'updateMask', 'set', 'del', 'setdoc'), true)) {
 	if (GETPOST('token', 'alpha') !== currentToken()) {
 		accessforbidden('Invalid token');
@@ -168,23 +269,19 @@ if (in_array($action, array('setmod', 'updateMask', 'set', 'del', 'setdoc'), tru
 		$modeltype = saweeklyreportGetDocumentModelType($value);
 		if ($modeltype === '' || delDocumentModel($value, $documenttype) <= 0) {
 			$error++;
-		} elseif ($modeltype === 'pdf' && getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF') === $value) {
-			dolibarr_del_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', (int) $conf->entity);
-		} elseif ($modeltype === 'pptx' && getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard') === $value) {
-			dolibarr_del_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', (int) $conf->entity);
+		} elseif (getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC') === $value) {
+			dolibarr_del_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC', (int) $conf->entity);
+			unset($conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC);
 		}
+		saweeklyreportCleanupLegacyDocumentDefaults($db);
 	} elseif ($action === 'setdoc') {
 		$modeltype = saweeklyreportGetDocumentModelType($value);
-		$constname = ($modeltype === 'pptx') ? 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX' : 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF';
 		$description = ($modeltype === 'pdf') ? $scandir : '';
-		if ($modeltype === '' || dolibarr_set_const($db, $constname, $value, 'chaine', 0, '', (int) $conf->entity) <= 0) {
+		if ($modeltype === '' || dolibarr_set_const($db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC', $value, 'chaine', 0, '', (int) $conf->entity) <= 0) {
 			$error++;
 		} else {
-			if ($constname === 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX') {
-				$conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX = $value;
-			} else {
-				$conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF = $value;
-			}
+			$conf->global->SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC = $value;
+			saweeklyreportCleanupLegacyDocumentDefaults($db);
 			delDocumentModel($value, $documenttype);
 			if (addDocumentModel($value, $documenttype, $label, $description) <= 0) {
 				$error++;
@@ -348,6 +445,7 @@ if ($resql) {
 } else {
 	dol_print_error($db);
 }
+$defaultdocumentmodel = saweeklyreportGetDefaultDocumentModel($db, $documenttype, false);
 
 print '<div class="div-table-responsive-no-min">';
 print '<table class="noborder centpercent">';
@@ -462,9 +560,7 @@ foreach ($documentmodels as $modeldata) {
 	$scan = (string) $modeldata['scan'];
 	$modeltype = (string) $modeldata['type'];
 	$isactive = in_array($name, $def, true);
-	$isdefault = $isactive && (($modeltype === 'pptx')
-		? (getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX') === $name)
-		: (getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF') === $name));
+	$isdefault = $isactive && ($defaultdocumentmodel === $name);
 	print '<tr class="oddeven">';
 	print '<td>'.dol_escape_htmltag($label).'</td>';
 	print '<td>'.$description.'</td>';
@@ -482,10 +578,12 @@ foreach ($documentmodels as $modeldata) {
 	print '<td class="center">';
 	if ($isdefault) {
 		print img_picto($langs->trans('Default'), 'on');
-	} else {
+	} elseif ($isactive) {
 		print '<a class="reposition" href="'.$setupurl.'?action=setdoc&token='.newToken().'&value='.urlencode($name).'&scan_dir='.urlencode($scan).'&label='.urlencode($label).'">';
 		print img_picto($langs->trans('Disabled'), 'off');
 		print '</a>';
+	} else {
+		print img_picto($langs->trans('Disabled'), 'off');
 	}
 	print '</td>';
 	$htmltooltip = $langs->trans('Name').': '.dol_escape_htmltag($label);

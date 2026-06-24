@@ -407,25 +407,8 @@ if (empty($reshook)) {
 		exit;
 	}
 
-	if ($action === 'addserviceline' && $permissiontoadd && $object->id > 0) {
-		if (!$tokenok) {
-			accessforbidden('Invalid token');
-		}
-		if ((int) $object->status !== WeeklyReport::STATUS_DRAFT) {
-			accessforbidden();
-		}
-		$line = new WeeklyReportService($db);
-		$line->entity = (int) $object->entity;
-		$line->fk_weeklyreport = (int) $object->id;
-		$line->service_type = GETPOST('new_service_type', 'alphanohtml');
-		$line->label = GETPOST('new_service_label', 'alphanohtml');
-		$line->description = dol_htmlcleanlastbr(GETPOST('new_service_description', 'restricthtml'));
-		$line->position = count($object->lines) + 1;
-		if ($line->label === '' || $line->create($user, 1) < 0) {
-			setEventMessages($line->error ?: $langs->transnoentitiesnoconv('ErrorFieldRequired', $langs->transnoentitiesnoconv('Label')), $line->errors, 'errors');
-		}
-		header('Location: '.dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?id='.(int) $object->id);
-		exit;
+	if ($action === 'addserviceline') {
+		accessforbidden();
 	}
 
 	if ($action === 'deleteserviceline' && $permissiontoadd && $object->id > 0) {
@@ -690,14 +673,6 @@ if ($action === 'create') {
 			print '</form>';
 		}
 
-		print '<form method="POST" action="'.dol_escape_htmltag($cardurl).'">';
-		print '<input type="hidden" name="token" value="'.newToken().'">';
-		print '<input type="hidden" name="action" value="addserviceline">';
-		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
-		print '<table class="noborder centpercent">';
-		print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('Add').'</td><td><input class="flat maxwidth150" name="new_service_type" placeholder="'.$langs->trans('Type').'"></td><td></td><td></td><td><input class="flat minwidth200" name="new_service_label" placeholder="'.$langs->trans('Label').'"></td><td><input class="flat minwidth300" name="new_service_description" placeholder="'.$langs->trans('Description').'"></td><td><input type="submit" class="button small" value="'.$langs->trans('Add').'"></td></tr>';
-		print '</table>';
-		print '</form>';
 	}
 
 	print dol_get_fiche_end();
@@ -728,7 +703,14 @@ if ($action === 'create') {
 		$activeDocumentModels = class_exists('ModelePDFWeeklyReport') ? ModelePDFWeeklyReport::liste_modeles($db) : array();
 		$genallowed = ($permissiontogeneratedoc && !empty($activeDocumentModels));
 		$delallowed = $permissiontoadd;
-		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, $genallowed, $delallowed, $object->model_pptx, 0, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
+		$modelselected = !empty($object->model_pptx) ? (string) $object->model_pptx : getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC');
+		if ($modelselected === '' || empty($activeDocumentModels[$modelselected])) {
+			$modelselected = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC');
+		}
+		if ($modelselected === '' || empty($activeDocumentModels[$modelselected])) {
+			$modelselected = '';
+		}
+		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, $genallowed, $delallowed, $modelselected, 0, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
 
 		$tmparray = saweeklyreportBuildNativeSourceLinkBlock($object, $permissiontoadd);
 		print $tmparray['htmltoenteralink'];

@@ -12,6 +12,8 @@
 - Normalisation des modèles statiques `document_model` afin qu’ils ne soient pas interprétés comme des modèles à répertoire de scan ODT.
 - Amélioration du sélecteur de tickets, du bandeau des onglets transverses et du retour à la ligne dans le bloc PowerPoint "Pose semaine dernière".
 - Alignement de la pagination du pied de page PDF TCPDF sur le rendu natif Dolibarr.
+- Unification du modèle documentaire par défaut avec `SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC` afin d’éviter deux modèles par défaut simultanés.
+- Suppression de l’ajout manuel de lignes SAV libres sur la fiche, au profit de la sélection de tickets existants via Select2.
 
 ## 0.1.0 - 2026-06-08
 

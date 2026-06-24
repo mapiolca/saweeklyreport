@@ -486,10 +486,7 @@ class WeeklyReport extends CommonObject
 			$this->vehicle_loading_reminder = getDolGlobalString('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'Pour rappel : réaliser le chargement des véhicules la veille du chantier.');
 		}
 		if (empty($this->model_pptx)) {
-			$this->model_pptx = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF');
-			if (empty($this->model_pptx)) {
-				$this->model_pptx = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
-			}
+			$this->model_pptx = $this->getDefaultDocumentModel();
 		}
 		$this->model_pdf = $this->model_pptx;
 
@@ -1283,10 +1280,7 @@ class WeeklyReport extends CommonObject
 	{
 		$model = (string) $modele;
 		if ($model === '') {
-			$model = !empty($this->model_pdf) ? (string) $this->model_pdf : getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF');
-			if ($model === '') {
-				$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
-			}
+			$model = !empty($this->model_pdf) ? (string) $this->model_pdf : $this->getDefaultDocumentModel();
 		}
 		if ($model === '' || !$this->isDocumentModelActive($model)) {
 			$this->error = 'ErrorWeeklyReportDocumentModelNotActive';
@@ -1466,12 +1460,27 @@ class WeeklyReport extends CommonObject
 	 */
 	private function getPptxTemplateModel()
 	{
-		$model = !empty($this->model_pptx) ? (string) $this->model_pptx : getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+		$model = !empty($this->model_pptx) ? (string) $this->model_pptx : $this->getDefaultDocumentModel();
 		if ($model === self::DOC_MODEL_PDF_TCPDF || strpos($model, 'pdf_') === 0) {
-			$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+			$model = 'weekly_report_standard';
 		}
 
 		return $model;
+	}
+
+	/**
+	 * Return unique default document model.
+	 *
+	 * @return	string
+	 */
+	private function getDefaultDocumentModel()
+	{
+		$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC');
+		if ($model !== '') {
+			return $model;
+		}
+
+		return 'pdf_weeklyreport_powerpoint';
 	}
 
 	/**

@@ -322,7 +322,78 @@ class modSAWeeklyReport extends DolibarrModules
 			return -1;
 		}
 
+		if ($this->migrateDefaultDocumentModel() < 0) {
+			return -1;
+		}
+
 		return 1;
+	}
+
+	/**
+	 * Migrate legacy per-format document defaults to one canonical default.
+	 *
+	 * @return	int
+	 */
+	private function migrateDefaultDocumentModel()
+	{
+		global $conf;
+
+		$entity = (int) $conf->entity;
+		$default = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC');
+		if ($default === '') {
+			$candidates = array(
+				getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF'),
+				getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX'),
+				'pdf_weeklyreport_powerpoint',
+				'weekly_report_standard',
+			);
+			foreach ($candidates as $candidate) {
+				if ($this->isWeeklyReportDocumentModelActive((string) $candidate, $entity)) {
+					$default = (string) $candidate;
+					break;
+				}
+			}
+			if ($default === '') {
+				$default = 'pdf_weeklyreport_powerpoint';
+			}
+			if (dolibarr_set_const($this->db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC', $default, 'chaine', 0, '', $entity) <= 0) {
+				return -1;
+			}
+		}
+
+		dolibarr_del_const($this->db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', $entity);
+		dolibarr_del_const($this->db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', $entity);
+
+		return 1;
+	}
+
+	/**
+	 * Check if a weekly report document model is active in document_model.
+	 *
+	 * @param	string	$model	Model key
+	 * @param	int		$entity	Entity
+	 * @return	bool
+	 */
+	private function isWeeklyReportDocumentModelActive($model, $entity)
+	{
+		$model = (string) $model;
+		if ($model === '') {
+			return false;
+		}
+
+		$sql = "SELECT rowid";
+		$sql .= " FROM ".$this->db->prefix()."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = ".((int) $entity);
+		$sql .= " AND nom = '".$this->db->escape($model)."'";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return false;
+		}
+		$isactive = ($this->db->num_rows($resql) > 0);
+		$this->db->free($resql);
+
+		return $isactive;
 	}
 
 	/**
