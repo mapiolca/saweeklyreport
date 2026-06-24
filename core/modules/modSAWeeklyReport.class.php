@@ -34,7 +34,7 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->editor_name = 'Les Métiers du Bâtiment';
 		$this->editor_url = 'lesmetiersdubatiment.fr';
 		$this->editor_squarred_logo = '';
-		$this->version = '0.1.0';
+		$this->version = '1.1';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		$this->picto = 'fa-chart-line';
 
@@ -304,6 +304,23 @@ class modSAWeeklyReport extends DolibarrModules
 				}
 			}
 			$this->db->free($resql);
+		}
+
+		$sql = "UPDATE ".$this->db->prefix()."document_model";
+		$sql .= " SET description = NULL";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND nom IN ('weekly_report_standard', 'pdf_weeklyreport_powerpoint')";
+		$sql .= " AND description IN ('Editable PPTX weekly report template', 'TCPDF weekly report generated from the same data as the PowerPoint document')";
+		if (!$this->db->query($sql)) {
+			return -1;
+		}
+
+		$sql = "DELETE FROM ".$this->db->prefix()."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = 0";
+		$sql .= " AND nom IN ('weekly_report_standard', 'pdf_weeklyreport_powerpoint')";
+		if (!$this->db->query($sql)) {
+			return -1;
 		}
 
 		return 1;

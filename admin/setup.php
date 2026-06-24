@@ -461,14 +461,15 @@ foreach ($documentmodels as $modeldata) {
 	$description = (string) $modeldata['description'];
 	$scan = (string) $modeldata['scan'];
 	$modeltype = (string) $modeldata['type'];
-	$isdefault = ($modeltype === 'pptx')
+	$isactive = in_array($name, $def, true);
+	$isdefault = $isactive && (($modeltype === 'pptx')
 		? (getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX') === $name)
-		: (getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF') === $name);
+		: (getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF') === $name));
 	print '<tr class="oddeven">';
 	print '<td>'.dol_escape_htmltag($label).'</td>';
 	print '<td>'.$description.'</td>';
 	print '<td class="center">';
-	if (in_array($name, $def, true)) {
+	if ($isactive) {
 		print '<a class="reposition" href="'.$setupurl.'?action=del&token='.newToken().'&value='.urlencode($name).'">';
 		print img_picto($langs->trans('Enabled'), 'switch_on');
 		print '</a>';

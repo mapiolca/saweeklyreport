@@ -45,6 +45,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/ajax.lib.php';
 dol_include_once('/saweeklyreport/class/weeklyreport.class.php');
 dol_include_once('/saweeklyreport/class/weeklyreportservice.class.php');
 dol_include_once('/saweeklyreport/class/saweeklyreporttickethelper.class.php');
+dol_include_once('/saweeklyreport/core/modules/saweeklyreport/modules_weeklyreport.php');
 dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
 
 /**
@@ -724,9 +725,10 @@ if ($action === 'create') {
 		print '<a name="builddoc"></a>';
 		$relativepath = rtrim($relativepathwithnofile, '/');
 		$urlsource = $cardurl.'?id='.((int) $object->id);
-		$genallowed = $permissiontogeneratedoc;
+		$activeDocumentModels = class_exists('ModelePDFWeeklyReport') ? ModelePDFWeeklyReport::liste_modeles($db) : array();
+		$genallowed = ($permissiontogeneratedoc && !empty($activeDocumentModels));
 		$delallowed = $permissiontoadd;
-		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, $genallowed, $delallowed, $object->model_pptx, 1, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
+		print $formfile->showdocuments($modulepart, $relativepath, $upload_dir, $urlsource, $genallowed, $delallowed, $object->model_pptx, 0, 0, 0, 28, 0, 'id='.((int) $object->id), '', '', $langs->defaultlang, '', $object, 0, 'remove_file');
 
 		$tmparray = saweeklyreportBuildNativeSourceLinkBlock($object, $permissiontoadd);
 		print $tmparray['htmltoenteralink'];

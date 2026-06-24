@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1 - 2026-06-24
+
+- Passage du descripteur du module en version `1.1`.
+- Intégration du modèle PPTX `weekly_report_standard` dans le gestionnaire natif des modèles de document, aux côtés du modèle PDF TCPDF.
+- Ajout du modèle de numérotation `advanced` avec masque personnalisable `SAWEEKLYREPORT_WEEKLYREPORT_ADVANCED_MASK` et simplification du modèle `standard`.
+- Réorganisation de la page de réglages avec les sections de numérotation et de modèles de document en haut de page.
+- Amélioration de la fiche rapport : édition champ par champ, placement natif des icônes d’édition, champs calculés en lecture seule et section Communications et objectifs.
+- Amélioration du PDF TCPDF : meilleure prise en charge best-effort des émojis, traductions du pied de page et réserve de bas de page renforcée.
+- Amélioration de l’onglet Événements/Agenda : pagination native, sélecteur du nombre de lignes, affichage du libellé sous la référence et utilisateurs de création/modification corrigés.
+- Normalisation des modèles statiques `document_model` afin qu’ils ne soient pas interprétés comme des modèles à répertoire de scan ODT.
+
 ## 0.1.0 - 2026-06-08
 
 - Correction du modèle PDF TCPDF : gestion best-effort des émojis, chargement des traductions du pied de page et pagination Dolibarr standard.

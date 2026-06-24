@@ -1160,6 +1160,12 @@ class WeeklyReport extends CommonObject
 			return -1;
 		}
 
+		$model = $this->getPptxTemplateModel();
+		if (!$this->isDocumentModelActive($model)) {
+			$this->error = 'ErrorWeeklyReportDocumentModelNotActive';
+			return -1;
+		}
+
 		$this->fetchLines();
 
 		$template = $this->getPptxTemplatePath();
@@ -1230,6 +1236,11 @@ class WeeklyReport extends CommonObject
 	{
 		global $user;
 
+		if (!$this->isDocumentModelActive(self::DOC_MODEL_PDF_TCPDF)) {
+			$this->error = 'ErrorWeeklyReportDocumentModelNotActive';
+			return -1;
+		}
+
 		dol_include_once('/saweeklyreport/core/modules/saweeklyreport/doc/'.self::DOC_MODEL_PDF_TCPDF.'.modules.php');
 		if (!class_exists(self::DOC_MODEL_PDF_TCPDF)) {
 			$this->error = 'ErrorPdfModelNotReadable';
@@ -1276,6 +1287,10 @@ class WeeklyReport extends CommonObject
 			if ($model === '') {
 				$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
 			}
+		}
+		if ($model === '' || !$this->isDocumentModelActive($model)) {
+			$this->error = 'ErrorWeeklyReportDocumentModelNotActive';
+			return -1;
 		}
 
 		if ($model !== '') {
@@ -1767,6 +1782,24 @@ class WeeklyReport extends CommonObject
 		}
 
 		return getEntity($this->element);
+	}
+
+	/**
+	 * Check if a document model is active in the current entity.
+	 *
+	 * @param	string	$model	Model key
+	 * @return	bool
+	 */
+	private function isDocumentModelActive($model)
+	{
+		if (!class_exists('ModelePDFWeeklyReport')) {
+			dol_include_once('/saweeklyreport/core/modules/saweeklyreport/modules_weeklyreport.php');
+		}
+		if (class_exists('ModelePDFWeeklyReport')) {
+			return ModelePDFWeeklyReport::isModelActive($this->db, (string) $model);
+		}
+
+		return false;
 	}
 
 	/**

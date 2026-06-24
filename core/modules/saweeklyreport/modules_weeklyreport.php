@@ -22,43 +22,23 @@ abstract class ModelePDFWeeklyReport
 
 		// phpcs:enable
 		$list = array();
-		$usednativehelper = false;
 
-		include_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
-		if (function_exists('getListOfModels')) {
-			$tmp = getListOfModels($db, 'weeklyreport', $maxfilenamelength);
-			if (is_array($tmp)) {
-				$list = $tmp;
-				unset($list[0]);
-				$usednativehelper = true;
-			}
-		}
-		if ($usednativehelper) {
-			$sql = "SELECT nom";
-			$sql .= " FROM ".MAIN_DB_PREFIX."document_model";
-			$sql .= " WHERE type = 'weeklyreport'";
-			$sql .= " AND entity IN (0,".((int) $conf->entity).")";
-			$resql = $db->query($sql);
-			if ($resql) {
-				while (is_object($obj = $db->fetch_object($resql))) {
-					$name = (string) $obj->nom;
-					if (!isset($list[$name]) && ($name === 'weekly_report_standard' || preg_match('/^pdf_[A-Za-z0-9_]+$/', $name))) {
-						$list[$name] = $name;
-					}
+		$sql = "SELECT nom, libelle";
+		$sql .= " FROM ".MAIN_DB_PREFIX."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = ".((int) $conf->entity);
+		$sql .= " ORDER BY nom ASC";
+		$resql = $db->query($sql);
+		if ($resql) {
+			while (is_object($obj = $db->fetch_object($resql))) {
+				$name = (string) $obj->nom;
+				if ($name === '' || ($name !== 'weekly_report_standard' && !preg_match('/^pdf_[A-Za-z0-9_]+$/', $name))) {
+					continue;
 				}
-				$db->free($resql);
+				$label = !empty($obj->libelle) ? (string) $obj->libelle : $name;
+				$list[$name] = ($maxfilenamelength > 0 ? dol_trunc($label, $maxfilenamelength, 'middle') : $label);
 			}
-		}
-
-		if (!$usednativehelper) {
-			$pptxmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
-			if ($pptxmodel !== '') {
-				$list[$pptxmodel] = $pptxmodel;
-			}
-			$pdfmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', 'pdf_weeklyreport_powerpoint');
-			if ($pdfmodel !== '') {
-				$list[$pdfmodel] = $pdfmodel;
-			}
+			$db->free($resql);
 		}
 		if (is_object($langs)) {
 			$langs->load('saweeklyreport@saweeklyreport');
@@ -71,6 +51,38 @@ abstract class ModelePDFWeeklyReport
 		}
 
 		return $list;
+	}
+
+	/**
+	 * Check if a document model is active for the current entity.
+	 *
+	 * @param	DoliDB	$db		Database handler
+	 * @param	string	$model	Model key
+	 * @return	bool
+	 */
+	public static function isModelActive($db, $model)
+	{
+		global $conf;
+
+		$model = (string) $model;
+		if ($model === '') {
+			return false;
+		}
+
+		$sql = "SELECT rowid";
+		$sql .= " FROM ".MAIN_DB_PREFIX."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = ".((int) $conf->entity);
+		$sql .= " AND nom = '".$db->escape($model)."'";
+
+		$resql = $db->query($sql);
+		if (!$resql) {
+			return false;
+		}
+		$active = ($db->num_rows($resql) > 0);
+		$db->free($resql);
+
+		return $active;
 	}
 }
 
