@@ -231,6 +231,9 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 		}
 
 		$pdf->Open();
+		if (method_exists($pdf, 'AliasNbPages')) {
+			$pdf->AliasNbPages();
+		}
 		$pdf->AddPage();
 		$heightforfooter = $this->getFooterHeight($pdf, $object, $outputlangs, 0);
 		$this->applyFooterReservation($pdf, $heightforfooter);
@@ -245,9 +248,6 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 		$this->renderTextSection($pdf, $object, $outputlangs, $outputlangs->transnoentities('WeeklyReportVehicleLoadingReminder'), $data['technician_detail'], $defaultfontsize);
 
 		$this->renderPageFootOnce($pdf, $object, $outputlangs, 0);
-		if (method_exists($pdf, 'AliasNbPages')) {
-			$pdf->AliasNbPages();
-		}
 
 		$pdf->Output($file, 'F');
 		$mainumask = getDolGlobalString('MAIN_UMASK');
@@ -552,8 +552,28 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 			$hasoverride = true;
 		}
 
+		$hadforcefont = isset($conf->global->MAIN_PDF_FORCE_FONT);
+		$oldforcefont = $hadforcefont ? (string) $conf->global->MAIN_PDF_FORCE_FONT : '';
+		$hasfontoverride = false;
+		$nativefont = pdf_getPDFFont($outputlangs);
+		$footerfont = $this->getNativeFooterFontName($this->pdffont);
+		if ($footerfont !== '' && $nativefont !== $footerfont) {
+			$conf->global->MAIN_PDF_FORCE_FONT = $footerfont;
+			$hasfontoverride = true;
+		}
+		if ($this->pdffont !== '') {
+			$pdf->SetFont($this->pdffont, '', 7);
+		}
+
 		$result = pdf_pagefoot($pdf, $outputlangs, 'SAWEEKLYREPORT_FREE_TEXT', $this->emetteur, $this->marge_basse, $this->marge_gauche, $this->page_hauteur, $object, $showdetails, $hidefreetext, $this->page_largeur, $this->watermark);
 
+		if ($hasfontoverride) {
+			if ($hadforcefont) {
+				$conf->global->MAIN_PDF_FORCE_FONT = $oldforcefont;
+			} else {
+				unset($conf->global->MAIN_PDF_FORCE_FONT);
+			}
+		}
 		if ($hasoverride) {
 			$conf->global->SAWEEKLYREPORT_FREE_TEXT = $oldfreetext;
 		}
@@ -593,6 +613,22 @@ class pdf_weeklyreport_powerpoint extends ModelePDFWeeklyReport
 			if ($this->isTcpdfFontAvailable('dejavusans')) {
 				return 'dejavusans';
 			}
+		}
+
+		return $font;
+	}
+
+	/**
+	 * Return the font name expected by native Dolibarr footer calculations.
+	 *
+	 * @param	string	$font	Actual TCPDF font
+	 * @return	string
+	 */
+	private function getNativeFooterFontName($font)
+	{
+		$font = (string) $font;
+		if (strtolower($font) === 'dejavusans') {
+			return 'DejaVuSans';
 		}
 
 		return $font;

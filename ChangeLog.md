@@ -10,6 +10,8 @@
 - Amélioration du PDF TCPDF : meilleure prise en charge best-effort des émojis, traductions du pied de page et réserve de bas de page renforcée.
 - Amélioration de l’onglet Événements/Agenda : pagination native, sélecteur du nombre de lignes, affichage du libellé sous la référence et utilisateurs de création/modification corrigés.
 - Normalisation des modèles statiques `document_model` afin qu’ils ne soient pas interprétés comme des modèles à répertoire de scan ODT.
+- Amélioration du sélecteur de tickets, du bandeau des onglets transverses et du retour à la ligne dans le bloc PowerPoint "Pose semaine dernière".
+- Alignement de la pagination du pied de page PDF TCPDF sur le rendu natif Dolibarr.
 
 ## 0.1.0 - 2026-06-08
 

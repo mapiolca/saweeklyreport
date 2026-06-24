@@ -65,11 +65,29 @@ function saweeklyreportRenderHtmlValue($value)
  */
 function weeklyreportBannerMoreHtmlRef($object)
 {
-	if (!is_object($object) || empty($object->label)) {
+	global $langs;
+
+	if (!is_object($object)) {
 		return '';
 	}
 
-	return '<div class="refidno">'.dol_escape_htmltag((string) $object->label).'</div>';
+	$out = '';
+	$label = trim((string) $object->label);
+	if ($label !== '') {
+		$out .= '<div class="refidno">'.$langs->trans('Label').' : '.dol_escape_htmltag($label).'</div>';
+	}
+
+	$period = '';
+	if (!empty($object->period_start) || !empty($object->period_end)) {
+		$periodstart = !empty($object->period_start) ? dol_print_date($object->period_start, 'day') : '';
+		$periodend = !empty($object->period_end) ? dol_print_date($object->period_end, 'day') : '';
+		$period = trim($periodstart.($periodstart !== '' && $periodend !== '' ? ' - ' : '').$periodend);
+	}
+	if ($period !== '') {
+		$out .= '<div class="refidno">'.$langs->trans('WeeklyReportPeriod').' : '.dol_escape_htmltag($period).'</div>';
+	}
+
+	return $out;
 }
 
 /**

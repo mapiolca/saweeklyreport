@@ -1080,7 +1080,7 @@ class WeeklyReport extends CommonObject
 		$previousweek = $peakpowerlabel.' : '.$this->formatPower($this->week_installed_power);
 		$previouscomment = $this->cleanOutputText($this->previous_week_feedback);
 		if ($previouscomment !== '') {
-			$previousweek .= ' - '.$previouscomment;
+			$previousweek .= "\n".$previouscomment;
 		}
 
 		return array(
@@ -1978,6 +1978,8 @@ class WeeklyReport extends CommonObject
 	 */
 	private function xmlText($text)
 	{
-		return htmlspecialchars((string) $text, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+		$escaped = htmlspecialchars((string) $text, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+
+		return str_replace(array("\r\n", "\r", "\n"), '</a:t></a:r><a:br/><a:r><a:t>', $escaped);
 	}
 }

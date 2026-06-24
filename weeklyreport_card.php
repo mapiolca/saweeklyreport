@@ -685,7 +685,7 @@ if ($action === 'create') {
 			print '<input type="hidden" name="action" value="addticketline">';
 			print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
 			print '<table class="noborder centpercent">';
-			print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('WeeklyReportAddExistingTicket').'</td><td>'.$form->selectTickets('', 'ticketid', '', 50, -1, '', 0, array(), 0, '1', 0, 'minwidth300', null, 1).'</td><td><input type="submit" class="button small" value="'.$langs->trans('Add').'"></td></tr>';
+			print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('WeeklyReportAddExistingTicket').'</td><td>'.SAWeeklyReportTicketHelper::selectTickets($db, $langs, '', 'ticketid', 50, 'minwidth300', '1').'</td><td><input type="submit" class="button small" value="'.$langs->trans('Add').'"></td></tr>';
 			print '</table>';
 			print '</form>';
 		}
