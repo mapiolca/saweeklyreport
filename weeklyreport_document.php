@@ -42,16 +42,20 @@ if (!isModEnabled('saweeklyreport')) {
 	accessforbidden();
 }
 
-$permissiontoread = $user->hasRight('saweeklyreport', 'weeklyreport', 'read');
-$permissiontoadd = $user->hasRight('saweeklyreport', 'weeklyreport', 'write');
-$permissiontodelete = $user->hasRight('saweeklyreport', 'weeklyreport', 'delete');
+$permissiontoread = saweeklyreportCanDo($user, $object, 'read');
+$permissiontoadd = saweeklyreportCanDo($user, $object, 'write');
+$permissiontodelete = saweeklyreportCanDo($user, $object, 'delete');
 if (!$permissiontoread) {
 	accessforbidden();
 }
 
 $upload_dir = $object->getDocumentDir();
 $modulepart = 'saweeklyreport';
-$relativepathwithnofile = ((int) $object->entity).'/weeklyreport/'.dol_sanitizeFileName($object->ref).'/';
+$relativepathwithnofile = $object->getDocumentRelativeDir().'/';
+if (!is_dir($upload_dir) && is_dir($object->getLegacyDocumentDir())) {
+	$upload_dir = $object->getLegacyDocumentDir();
+	$relativepathwithnofile = $object->getLegacyDocumentRelativeDir().'/';
+}
 
 include DOL_DOCUMENT_ROOT.'/core/actions_linkedfiles.inc.php';
 
@@ -64,7 +68,8 @@ $head = weeklyreportPrepareHead($object);
 print dol_get_fiche_head($head, 'documents', $langs->trans('WeeklyReport'), -1, $object->picto);
 
 $linkback = '<a href="'.dol_buildpath('/saweeklyreport/weeklyreport_list.php', 1).'">'.$langs->trans('BackToList').'</a>';
-dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref');
+$morehtmlref = weeklyreportBannerMoreHtmlRef($object);
+dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $morehtmlref);
 
 $filearray = dol_dir_list($upload_dir, 'files', 0, '', '(\.meta|_preview.*\.png)$', $sortfield, (strtolower($sortorder) == 'desc' ? SORT_DESC : SORT_ASC), 1);
 $totalsize = 0;

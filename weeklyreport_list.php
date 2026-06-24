@@ -35,13 +35,14 @@ if (!$res) {
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 dol_include_once('/saweeklyreport/class/weeklyreport.class.php');
+dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
 
 $langs->loadLangs(array('saweeklyreport@saweeklyreport', 'other'));
 
 if (!isModEnabled('saweeklyreport')) {
 	accessforbidden();
 }
-if (!$user->hasRight('saweeklyreport', 'weeklyreport', 'read')) {
+if (!saweeklyreportCanDo($user, null, 'read')) {
 	accessforbidden();
 }
 
@@ -266,7 +267,7 @@ print '<input type="hidden" name="page" value="'.((int) $page).'">';
 print '<input type="hidden" name="contextpage" value="'.dol_escape_htmltag($contextpage).'">';
 
 $newcardbutton = '';
-if ($user->hasRight('saweeklyreport', 'weeklyreport', 'write')) {
+if (saweeklyreportCanDo($user, null, 'write')) {
 	$newcardbutton = dolGetButtonTitle($langs->trans('NewWeeklyReport'), '', 'fa fa-plus-circle', dol_buildpath('/saweeklyreport/weeklyreport_card.php', 1).'?mode=create', '', 1);
 }
 

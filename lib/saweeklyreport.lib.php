@@ -6,6 +6,91 @@
  */
 
 /**
+ * Check a SAWeeklyReport functional permission with Dolibarr admin override.
+ *
+ * @param	User|null			$user	User
+ * @param	CommonObject|null	$object	Object, kept for future entity checks
+ * @param	string				$action	Action code
+ * @return	bool
+ */
+function saweeklyreportCanDo($user, $object = null, $action = 'read')
+{
+	if (!is_object($user)) {
+		return false;
+	}
+	if (!empty($user->admin)) {
+		return true;
+	}
+
+	if ($action === 'generate') {
+		return $user->hasRight('saweeklyreport', 'weeklyreport', 'write') || $user->hasRight('saweeklyreport', 'weeklyreport', 'export');
+	}
+
+	$rights = array(
+		'read' => 'read',
+		'write' => 'write',
+		'delete' => 'delete',
+		'validate' => 'validate',
+		'export' => 'export',
+		'api' => 'api',
+	);
+	if (empty($rights[$action])) {
+		return false;
+	}
+
+	return $user->hasRight('saweeklyreport', 'weeklyreport', $rights[$action]);
+}
+
+/**
+ * Render a sanitized HTML value stored by DolEditor.
+ *
+ * @param	string|null	$value	Stored value
+ * @return	string
+ */
+function saweeklyreportRenderHtmlValue($value)
+{
+	$value = (string) $value;
+	if ($value === '') {
+		return '';
+	}
+
+	return dolPrintHTML($value);
+}
+
+/**
+ * Return native banner secondary reference content.
+ *
+ * @param	CommonObject	$object	Object
+ * @return	string
+ */
+function weeklyreportBannerMoreHtmlRef($object)
+{
+	global $langs;
+
+	if (!is_object($object)) {
+		return '';
+	}
+
+	$out = '';
+	$label = trim((string) $object->label);
+	if ($label !== '') {
+		$out .= '<div class="refidno">'.$langs->trans('Label').' : '.dol_escape_htmltag($label).'</div>';
+	}
+
+	$period = '';
+	if (!empty($object->period_start) || !empty($object->period_end)) {
+		$periodstart = !empty($object->period_start) ? dol_print_date($object->period_start, 'day') : '';
+		$periodend = !empty($object->period_end) ? dol_print_date($object->period_end, 'day') : '';
+		$period = trim($periodstart.($periodstart !== '' && $periodend !== '' ? ' - ' : '').$periodend);
+	}
+	if ($period !== '') {
+		$out .= '<div class="refidno">'.$langs->trans('WeeklyReportPeriod').' : '.dol_escape_htmltag($period).'</div>';
+	}
+
+	return $out;
+}
+
+/**
  * Prepare admin tabs.
  *
  * @return	array<int,array<int,string>>
@@ -119,6 +204,10 @@ function weeklyreportCountDocuments($object)
 
 	$upload_dir = $object->getDocumentDir();
 	$nbfiles = is_dir($upload_dir) ? count(dol_dir_list($upload_dir, 'files', 0, '', '(\.meta|_preview.*\.png)$')) : 0;
+	if ($nbfiles === 0 && method_exists($object, 'getLegacyDocumentDir')) {
+		$legacy_upload_dir = $object->getLegacyDocumentDir();
+		$nbfiles = is_dir($legacy_upload_dir) ? count(dol_dir_list($legacy_upload_dir, 'files', 0, '', '(\.meta|_preview.*\.png)$')) : 0;
+	}
 	$nblinks = class_exists('Link') ? (int) Link::count($db, $object->element, (int) $object->id) : 0;
 
 	return $nbfiles + $nblinks;

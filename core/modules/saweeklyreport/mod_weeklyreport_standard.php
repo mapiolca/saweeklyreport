@@ -53,21 +53,10 @@ class mod_weeklyreport_standard extends ModeleNumRefWeeklyReport
 	 */
 	public function getNextValue($object)
 	{
-		global $conf;
-
 		$now = dol_now();
 		$year = !empty($object->year) ? (int) $object->year : (int) date('o', $now);
 		$week = !empty($object->week) ? (int) $object->week : (int) date('W', $now);
-		$mask = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_MASK', $this->prefix.'-{YYYY}-S{WW}');
-		$ref = strtr($mask, array(
-			'{YYYY}' => sprintf('%04d', $year),
-			'{YY}' => substr(sprintf('%04d', $year), -2),
-			'{WW}' => sprintf('%02d', $week),
-			'{W}' => (string) $week,
-			'{ENTITY}' => (string) (int) $conf->entity,
-		));
-		$ref = preg_replace('/[^A-Za-z0-9_\-.]/', '', (string) $ref);
 
-		return ($ref !== '' ? $ref : $this->prefix.'-'.$year.'-S'.sprintf('%02d', $week));
+		return $this->prefix.'-'.$year.'-S'.sprintf('%02d', $week);
 	}
 }

@@ -129,7 +129,7 @@ class WeeklyReportService extends CommonObject
 
 		$sourceelement = (string) $this->source_element;
 		$sourceid = (int) $this->source_id;
-		if ($sourceelement === 'ticket' && $sourceid > 0 && isModEnabled('ticket') && is_object($user) && $user->hasRight('ticket', 'read')) {
+		if ($sourceelement === 'ticket' && $sourceid > 0 && isModEnabled('ticket') && is_object($user) && (!empty($user->admin) || $user->hasRight('ticket', 'read'))) {
 			dol_include_once('/ticket/class/ticket.class.php');
 			if (class_exists('Ticket')) {
 				$ticket = new Ticket($this->db);
@@ -138,7 +138,7 @@ class WeeklyReportService extends CommonObject
 				}
 			}
 		}
-		if ($sourceelement === 'fichinter' && $sourceid > 0 && isModEnabled('intervention') && is_object($user) && $user->hasRight('ficheinter', 'lire')) {
+		if ($sourceelement === 'fichinter' && $sourceid > 0 && isModEnabled('intervention') && is_object($user) && (!empty($user->admin) || $user->hasRight('ficheinter', 'lire'))) {
 			dol_include_once('/fichinter/class/fichinter.class.php');
 			if (class_exists('Fichinter')) {
 				$fichinter = new Fichinter($this->db);

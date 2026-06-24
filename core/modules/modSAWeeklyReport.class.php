@@ -34,7 +34,7 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->editor_name = 'Les Métiers du Bâtiment';
 		$this->editor_url = 'lesmetiersdubatiment.fr';
 		$this->editor_squarred_logo = '';
-		$this->version = '1.0.0';
+		$this->version = '1.1.0';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		$this->picto = 'fa-chart-line';
 
@@ -55,6 +55,8 @@ class modSAWeeklyReport extends DolibarrModules
 					'weeklyreportcard',
 					'weeklyreportlist',
 					'globalcard',
+					'main',
+					'notification',
 					'multicompanyexternalmodulesharing',
 					'multicompanyexternalmodules',
 					'multicompanysharingoptions',
@@ -82,18 +84,20 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->const = array(
 			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON', 'chaine', 'mod_weeklyreport_standard', 'Weekly report numbering module', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLYREPORT_MASK', 'chaine', 'SAWR-{YYYY}-S{WW}', 'Weekly report numbering mask', 0, 'current', 1),
-			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'chaine', 'weekly_report_standard', 'Weekly report PPTX model', 0, 'current', 1),
+			array('SAWEEKLYREPORT_WEEKLYREPORT_ADVANCED_MASK', 'chaine', 'SAWR-{yyyy}-S{ww}-{000}', 'Weekly report advanced numbering mask', 0, 'current', 1),
+			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC', 'chaine', 'pdf_weeklyreport_powerpoint', 'Weekly report default document model', 0, 'current', 1),
 			array('SAWEEKLYREPORT_ANNUAL_TARGET_POWER', 'chaine', '846', 'Annual kWc target', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLY_TARGET_POWER', 'chaine', '18', 'Weekly kWc target', 0, 'current', 1),
 			array('SAWEEKLYREPORT_MEETING_DURATION', 'chaine', '15', 'Meeting duration in minutes', 0, 'current', 1),
+			array('SAWEEKLYREPORT_FREE_TEXT', 'chaine', '', 'Weekly report PDF free text', 0, 'current', 1),
 			array('SAWEEKLYREPORT_PREFILL_FICHINTER', 'chaine', '1', 'Prefill interventions', 0, 'current', 1),
 			array('SAWEEKLYREPORT_PREFILL_TICKET', 'chaine', '1', 'Prefill tickets', 0, 'current', 1),
 			array('SAWEEKLYREPORT_TICKET_TYPE_CODES', 'chaine', '', 'Ticket request types to prefill', 0, 'current', 1),
 			array('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', 'chaine', 'Rappel : port du harnais obligatoire en toiture. Pas de précipitation en fin de chantier.', 'Default safety message', 0, 'current', 1),
 			array('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', 'chaine', 'Pour rappel : réaliser le chargement des véhicules la veille du chantier.', 'Default loading reminder', 0, 'current', 1),
 			array('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_CREATE', 'chaine', '1', 'Agenda event for weekly report creation', 0, 'current', 1),
-			array('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_VALIDATE', 'chaine', '1', 'Agenda event for weekly report validation', 0, 'current', 1),
-			array('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_GENERATE_DOCUMENT', 'chaine', '1', 'Agenda event for weekly report PPTX generation', 0, 'current', 1),
+			array('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_UPDATE', 'chaine', '1', 'Agenda event for weekly report update', 0, 'current', 1),
+			array('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_DELETE', 'chaine', '1', 'Agenda event for weekly report deletion', 0, 'current', 1),
 		);
 
 		if (!isModEnabled('saweeklyreport')) {
@@ -152,7 +156,7 @@ class modSAWeeklyReport extends DolibarrModules
 			'langs' => 'saweeklyreport@saweeklyreport',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('saweeklyreport')",
-			'perms' => '$user->hasRight("saweeklyreport", "weeklyreport", "read")',
+			'perms' => '$user->admin || $user->hasRight("saweeklyreport", "weeklyreport", "read")',
 			'target' => '',
 			'user' => 2,
 			'object' => 'WeeklyReport',
@@ -167,7 +171,7 @@ class modSAWeeklyReport extends DolibarrModules
 			'langs' => 'saweeklyreport@saweeklyreport',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('saweeklyreport')",
-			'perms' => '$user->hasRight("saweeklyreport", "weeklyreport", "write")',
+			'perms' => '$user->admin || $user->hasRight("saweeklyreport", "weeklyreport", "write")',
 			'target' => '',
 			'user' => 2,
 			'object' => 'WeeklyReport',
@@ -182,7 +186,7 @@ class modSAWeeklyReport extends DolibarrModules
 			'langs' => 'saweeklyreport@saweeklyreport',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('saweeklyreport')",
-			'perms' => '$user->hasRight("saweeklyreport", "weeklyreport", "read")',
+			'perms' => '$user->admin || $user->hasRight("saweeklyreport", "weeklyreport", "read")',
 			'target' => '',
 			'user' => 2,
 			'object' => 'WeeklyReport',
@@ -301,7 +305,95 @@ class modSAWeeklyReport extends DolibarrModules
 			$this->db->free($resql);
 		}
 
+		$sql = "UPDATE ".$this->db->prefix()."document_model";
+		$sql .= " SET description = NULL";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND nom IN ('weekly_report_standard', 'pdf_weeklyreport_powerpoint')";
+		$sql .= " AND description IN ('Editable PPTX weekly report template', 'TCPDF weekly report generated from the same data as the PowerPoint document')";
+		if (!$this->db->query($sql)) {
+			return -1;
+		}
+
+		$sql = "DELETE FROM ".$this->db->prefix()."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = 0";
+		$sql .= " AND nom IN ('weekly_report_standard', 'pdf_weeklyreport_powerpoint')";
+		if (!$this->db->query($sql)) {
+			return -1;
+		}
+
+		if ($this->migrateDefaultDocumentModel() < 0) {
+			return -1;
+		}
+
 		return 1;
+	}
+
+	/**
+	 * Migrate legacy per-format document defaults to one canonical default.
+	 *
+	 * @return	int
+	 */
+	private function migrateDefaultDocumentModel()
+	{
+		global $conf;
+
+		$entity = (int) $conf->entity;
+		$default = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC');
+		if ($default === '') {
+			$candidates = array(
+				getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF'),
+				getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX'),
+				'pdf_weeklyreport_powerpoint',
+				'weekly_report_standard',
+			);
+			foreach ($candidates as $candidate) {
+				if ($this->isWeeklyReportDocumentModelActive((string) $candidate, $entity)) {
+					$default = (string) $candidate;
+					break;
+				}
+			}
+			if ($default === '') {
+				$default = 'pdf_weeklyreport_powerpoint';
+			}
+			if (dolibarr_set_const($this->db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC', $default, 'chaine', 0, '', $entity) <= 0) {
+				return -1;
+			}
+		}
+
+		dolibarr_del_const($this->db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', $entity);
+		dolibarr_del_const($this->db, 'SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', $entity);
+
+		return 1;
+	}
+
+	/**
+	 * Check if a weekly report document model is active in document_model.
+	 *
+	 * @param	string	$model	Model key
+	 * @param	int		$entity	Entity
+	 * @return	bool
+	 */
+	private function isWeeklyReportDocumentModelActive($model, $entity)
+	{
+		$model = (string) $model;
+		if ($model === '') {
+			return false;
+		}
+
+		$sql = "SELECT rowid";
+		$sql .= " FROM ".$this->db->prefix()."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = ".((int) $entity);
+		$sql .= " AND nom = '".$this->db->escape($model)."'";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return false;
+		}
+		$isactive = ($this->db->num_rows($resql) > 0);
+		$this->db->free($resql);
+
+		return $isactive;
 	}
 
 	/**

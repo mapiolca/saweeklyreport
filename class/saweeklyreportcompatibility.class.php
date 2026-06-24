@@ -52,6 +52,14 @@ class SAWeeklyReportCompatibility
 				'available' => class_exists('ZipArchive'),
 				'reason' => 'RequiresZipArchive',
 			),
+			'pdf_tcpdf_generation' => array(
+				'label' => 'SAWeeklyReportFeaturePdfTcpdf',
+				'description' => 'SAWeeklyReportFeaturePdfTcpdfDesc',
+				'min_dolibarr' => '20.0.0',
+				'min_php' => '8.0.0',
+				'available' => is_readable(DOL_DOCUMENT_ROOT.'/core/lib/pdf.lib.php'),
+				'reason' => 'RequiresTcpdf',
+			),
 			'powerplantpv_orders' => array(
 				'label' => 'SAWeeklyReportFeaturePowerPlantPVOrders',
 				'description' => 'SAWeeklyReportFeaturePowerPlantPVOrdersDesc',

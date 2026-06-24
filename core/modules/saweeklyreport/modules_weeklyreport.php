@@ -18,23 +18,71 @@ abstract class ModelePDFWeeklyReport
 	 */
 	public static function liste_modeles($db, $maxfilenamelength = 0)
 	{
+		global $conf, $langs;
+
 		// phpcs:enable
 		$list = array();
 
-		include_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
-		if (function_exists('getListOfModels')) {
-			$tmp = getListOfModels($db, 'weeklyreport', $maxfilenamelength);
-			if (is_array($tmp)) {
-				$list = $tmp;
+		$sql = "SELECT nom, libelle";
+		$sql .= " FROM ".MAIN_DB_PREFIX."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = ".((int) $conf->entity);
+		$sql .= " ORDER BY nom ASC";
+		$resql = $db->query($sql);
+		if ($resql) {
+			while (is_object($obj = $db->fetch_object($resql))) {
+				$name = (string) $obj->nom;
+				if ($name === '' || ($name !== 'weekly_report_standard' && !preg_match('/^pdf_[A-Za-z0-9_]+$/', $name))) {
+					continue;
+				}
+				$label = !empty($obj->libelle) ? (string) $obj->libelle : $name;
+				$list[$name] = ($maxfilenamelength > 0 ? dol_trunc($label, $maxfilenamelength, 'middle') : $label);
+			}
+			$db->free($resql);
+		}
+		if (is_object($langs)) {
+			$langs->load('saweeklyreport@saweeklyreport');
+			if (isset($list['weekly_report_standard'])) {
+				$list['weekly_report_standard'] = $langs->trans('WeeklyReportPptxStandardModel');
+			}
+			if (isset($list['pdf_weeklyreport_powerpoint'])) {
+				$list['pdf_weeklyreport_powerpoint'] = $langs->trans('WeeklyReportPdfTcpdfModel');
 			}
 		}
 
-		if (empty($list)) {
-			$model = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
-			$list[$model] = $model;
+		return $list;
+	}
+
+	/**
+	 * Check if a document model is active for the current entity.
+	 *
+	 * @param	DoliDB	$db		Database handler
+	 * @param	string	$model	Model key
+	 * @return	bool
+	 */
+	public static function isModelActive($db, $model)
+	{
+		global $conf;
+
+		$model = (string) $model;
+		if ($model === '') {
+			return false;
 		}
 
-		return $list;
+		$sql = "SELECT rowid";
+		$sql .= " FROM ".MAIN_DB_PREFIX."document_model";
+		$sql .= " WHERE type = 'weeklyreport'";
+		$sql .= " AND entity = ".((int) $conf->entity);
+		$sql .= " AND nom = '".$db->escape($model)."'";
+
+		$resql = $db->query($sql);
+		if (!$resql) {
+			return false;
+		}
+		$active = ($db->num_rows($resql) > 0);
+		$db->free($resql);
+
+		return $active;
 	}
 }
 
