@@ -41,6 +41,7 @@ WeeklyReportPptxStandardModel=Standard PowerPoint presentation
 WeeklyReportPdfTcpdfModel=Weekly report TCPDF PDF
 WeeklyReportNumberingModel=Numbering model
 WeeklyReportNumberingMask=Numbering mask
+WeeklyReportCommunicationsObjectives=Communications and objectives
 WeeklyReportServiceLines=Service and maintenance
 WeeklyReportServiceType=Service type
 WeeklyReportTicketGroup=Group

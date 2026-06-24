@@ -594,6 +594,7 @@ if ($action === 'create') {
 	print '<div class="clearboth"></div>';
 
 	print '<br>';
+	print load_fiche_titre($langs->trans('WeeklyReportCommunicationsObjectives'), '', 'meeting');
 	print '<table class="border centpercent tableforfield">';
 	foreach (array('previous_week_feedback', 'field_returns', 'current_week_goal', 'safety_message', 'vehicle_loading_reminder') as $field) {
 		print '<tr><td class="titlefield">'.saweeklyreportRenderEditableFieldLabel($langs->trans($object->fields[$field]['label']), $cardurl, $object, $field, $inlineeditallowed, $action, $editfield).'</td><td>';

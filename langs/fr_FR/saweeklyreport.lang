@@ -41,6 +41,7 @@ WeeklyReportPptxStandardModel=Présentation PowerPoint standard
 WeeklyReportPdfTcpdfModel=PDF TCPDF du rapport hebdomadaire
 WeeklyReportNumberingModel=Modèle de numérotation
 WeeklyReportNumberingMask=Masque de numérotation
+WeeklyReportCommunicationsObjectives=Communications et objectifs
 WeeklyReportServiceLines=SAV et maintenance
 WeeklyReportServiceType=Type de service
 WeeklyReportTicketGroup=Groupe
