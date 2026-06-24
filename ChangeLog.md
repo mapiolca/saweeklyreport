@@ -14,6 +14,7 @@
 - Alignement de la pagination du pied de page PDF TCPDF sur le rendu natif Dolibarr.
 - Unification du modèle documentaire par défaut avec `SAWEEKLYREPORT_WEEKLYREPORT_ADDON_DOC` afin d’éviter deux modèles par défaut simultanés.
 - Suppression de l’ajout manuel de lignes SAV libres sur la fiche, au profit de la sélection de tickets existants via Select2.
+- Ajustement du modèle PPTX standard : titre “Retours terrain” et alignement des bordures droites des blocs bas.
 
 ## 0.1.0 - 2026-06-08
 
