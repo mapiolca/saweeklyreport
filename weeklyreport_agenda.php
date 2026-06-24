@@ -85,7 +85,10 @@ $search_filtert = GETPOSTINT('search_filtert');
 $search_dateevent_start = GETPOSTDATE('dateevent_start');
 $search_dateevent_end = GETPOSTDATE('dateevent_end');
 
-$limit = GETPOSTINT('limit') ? GETPOSTINT('limit') : $conf->liste_limit;
+$limit = GETPOSTINT('limit');
+if ($limit <= 0) {
+	$limit = (int) $conf->liste_limit;
+}
 $sortfield = GETPOST('sortfield', 'aZ09comma');
 $sortorder = GETPOST('sortorder', 'aZ09comma');
 $buttonsearch = GETPOST('button_search_x', 'alpha') || GETPOST('button_search.x', 'alpha') || GETPOST('button_search', 'alpha');
@@ -343,7 +346,7 @@ if (!empty($contextpage) && $contextpage != 'weeklyreportagenda') {
 	print '<input type="hidden" name="contextpage" value="'.dol_escape_htmltag($contextpage).'">';
 }
 
-print_barre_liste($langs->trans('WeeklyReportEventsAgenda'), $page, $agendapageurl, $param, $sortfield, $sortorder, $massactionbutton, $num, $nbtotalofrecords, 'object_action', 0, $morehtmlright, '', $limit, 1, 0);
+print_barre_liste($langs->trans('WeeklyReportEventsAgenda'), $page, $agendapageurl, $param, $sortfield, $sortorder, $massactionbutton, $num, $nbtotalofrecords, 'object_action', 0, $morehtmlright, '', $limit, 'limit', 0);
 
 print '<div class="div-table-responsive-no-min">';
 print '<table class="noborder centpercent">';
