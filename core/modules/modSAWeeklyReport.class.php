@@ -84,6 +84,7 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->const = array(
 			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON', 'chaine', 'mod_weeklyreport_standard', 'Weekly report numbering module', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLYREPORT_MASK', 'chaine', 'SAWR-{YYYY}-S{WW}', 'Weekly report numbering mask', 0, 'current', 1),
+			array('SAWEEKLYREPORT_WEEKLYREPORT_ADVANCED_MASK', 'chaine', 'SAWR-{yyyy}-S{ww}-{000}', 'Weekly report advanced numbering mask', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', 'chaine', 'pdf_weeklyreport_powerpoint', 'Weekly report PDF document model', 0, 'current', 1),
 			array('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'chaine', 'weekly_report_standard', 'Weekly report PPTX model', 0, 'current', 1),
 			array('SAWEEKLYREPORT_ANNUAL_TARGET_POWER', 'chaine', '846', 'Annual kWc target', 0, 'current', 1),

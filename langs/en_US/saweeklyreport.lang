@@ -69,6 +69,7 @@ SAWeeklyReportAgendaDelete=Create an event on deletion
 SAWeeklyReportAgendaValidate=Create an event on validation
 SAWeeklyReportAgendaGenerateDocument=Create an event on PPTX generation
 SAWeeklyReportNumRefStandardDesc=Standard numbering %s-YYYY-SWW
+SAWeeklyReportAdvancedMaskWeekHelp=Weekly report specific codes: {ww} = 2-digit ISO week, {w} = ISO week without leading zero.
 SAWeeklyReportPermissionRead=Read weekly reports
 SAWeeklyReportPermissionWrite=Create and modify weekly reports
 SAWeeklyReportPermissionDelete=Delete weekly reports

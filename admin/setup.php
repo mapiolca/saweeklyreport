@@ -95,7 +95,7 @@ if (in_array($action, array('setmod', 'updateMask', 'set', 'del', 'setdoc'), tru
 	} elseif ($action === 'updateMask') {
 		$maskconst = GETPOST('maskconstWeeklyReport', 'aZ09');
 		$maskvalue = GETPOST('maskWeeklyReport', 'alphanohtml');
-		if ($maskconst !== 'SAWEEKLYREPORT_WEEKLYREPORT_MASK' || dolibarr_set_const($db, $maskconst, $maskvalue, 'chaine', 0, '', (int) $conf->entity) <= 0) {
+		if ($maskconst !== 'SAWEEKLYREPORT_WEEKLYREPORT_ADVANCED_MASK' || dolibarr_set_const($db, $maskconst, $maskvalue, 'chaine', 0, '', (int) $conf->entity) <= 0) {
 			$error++;
 		}
 	} elseif ($action === 'set') {
@@ -176,61 +176,6 @@ print load_fiche_titre($title, $linkback, 'fa-chart-line');
 $head = saweeklyreportAdminPrepareHead();
 print dol_get_fiche_head($head, 'settings', $title, -1, 'fa-chart-line');
 
-print '<form method="POST" action="'.dol_escape_htmltag($setupurl).'">';
-print '<input type="hidden" name="token" value="'.newToken().'">';
-print '<input type="hidden" name="action" value="updatesettings">';
-
-print '<table class="noborder centpercent">';
-print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportKpiSettings').'</th></tr>';
-print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('WeeklyReportAnnualTargetPower').'</td><td><input class="flat width100 right" name="SAWEEKLYREPORT_ANNUAL_TARGET_POWER" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_ANNUAL_TARGET_POWER', '846')).'"> kWc</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportWeeklyTargetPower').'</td><td><input class="flat width100 right" name="SAWEEKLYREPORT_WEEKLY_TARGET_POWER" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_WEEKLY_TARGET_POWER', '18')).'"> kWc</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportMeetingDuration').'</td><td><input class="flat width100 right" name="SAWEEKLYREPORT_MEETING_DURATION" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_MEETING_DURATION', '15')).'"> '.$langs->trans('Minutes').'</td></tr>';
-print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportModelsSettings').'</th></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportPptxModel').'</td><td>';
-print $form->selectarray('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', array('weekly_report_standard' => 'weekly_report_standard'), getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard'), 0, 0, 0, '', 0, 0, 0, '', 'minwidth300');
-print ajax_combobox('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX');
-print '</td></tr>';
-print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportPrefillSettings').'</th></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPrefillFichinter').'</td><td>'.ajax_constantonoff('SAWEEKLYREPORT_PREFILL_FICHINTER', array(), (int) $conf->entity).'</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPrefillTicket').'</td><td>'.ajax_constantonoff('SAWEEKLYREPORT_PREFILL_TICKET', array(), (int) $conf->entity).'</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportTicketTypesToPrefill').'</td><td>';
-if (isModEnabled('ticket')) {
-	$formticket = new FormTicket($db);
-	$formticket->selectTypesTickets(getDolGlobalString('SAWEEKLYREPORT_TICKET_TYPE_CODES'), 'SAWEEKLYREPORT_TICKET_TYPE_CODES', '', 2, 0, 1, 0, 'minwidth300 maxwidth500', 1);
-	print ' <span class="opacitymedium">'.$langs->trans('SAWeeklyReportTicketTypesToPrefillHelp').'</span>';
-} else {
-	print '<span class="opacitymedium">'.$langs->trans('RequiresTicket').'</span>';
-}
-print '</td></tr>';
-print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportAgendaSettings').'</th></tr>';
-if (isModEnabled('agenda')) {
-	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaCreate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_CREATE', array(), (int) $conf->entity).'</td></tr>';
-	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaUpdate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_UPDATE', array(), (int) $conf->entity).'</td></tr>';
-	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaDelete').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_DELETE', array(), (int) $conf->entity).'</td></tr>';
-} else {
-	print '<tr class="oddeven"><td colspan="2" class="opacitymedium">'.$langs->trans('RequiresAgenda').'</td></tr>';
-}
-print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportDefaultTexts').'</th></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportSafetyMessage').'</td><td>';
-$editor = new DolEditor('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', getDolGlobalString('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
-print $editor->Create(1);
-print '</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportVehicleLoadingReminder').'</td><td>';
-$editor = new DolEditor('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', getDolGlobalString('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
-print $editor->Create(1);
-print '</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPdfFreeText').'</td><td>';
-$editor = new DolEditor('SAWEEKLYREPORT_FREE_TEXT', getDolGlobalString('SAWEEKLYREPORT_FREE_TEXT'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
-print $editor->Create(1);
-print '</td></tr>';
-print '</table>';
-
-print '<div class="center">';
-print '<input type="submit" class="button button-save" value="'.$langs->trans('Save').'">';
-print '</div>';
-print '</form>';
-
-print '<br>';
 print load_fiche_titre($langs->trans('SAWeeklyReportNumberingModules'), '', '');
 print '<div class="div-table-responsive-no-min">';
 print '<table class="noborder centpercent">';
@@ -315,18 +260,6 @@ if ($numberingfound === 0) {
 }
 print '</table>';
 print '</div>';
-
-print '<form method="POST" action="'.dol_escape_htmltag($setupurl).'">';
-print '<input type="hidden" name="token" value="'.newToken().'">';
-print '<input type="hidden" name="action" value="updateMask">';
-print '<input type="hidden" name="maskconstWeeklyReport" value="SAWEEKLYREPORT_WEEKLYREPORT_MASK">';
-print '<table class="noborder centpercent">';
-print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('WeeklyReportNumberingMask').'</td><td>';
-print '<input class="flat minwidth300" name="maskWeeklyReport" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_MASK', 'SAWR-{YYYY}-S{WW}')).'">';
-print ' <input type="submit" class="button button-edit" value="'.$langs->trans('Modify').'">';
-print '</td></tr>';
-print '</table>';
-print '</form>';
 
 print '<br>';
 print load_fiche_titre($langs->trans('SAWeeklyReportDocumentModels'), '', '');
@@ -437,6 +370,62 @@ if ($documentmodelfound === 0) {
 }
 print '</table>';
 print '</div>';
+
+print '<br>';
+
+print '<form method="POST" action="'.dol_escape_htmltag($setupurl).'">';
+print '<input type="hidden" name="token" value="'.newToken().'">';
+print '<input type="hidden" name="action" value="updatesettings">';
+
+print '<table class="noborder centpercent">';
+print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportKpiSettings').'</th></tr>';
+print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('WeeklyReportAnnualTargetPower').'</td><td><input class="flat width100 right" name="SAWEEKLYREPORT_ANNUAL_TARGET_POWER" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_ANNUAL_TARGET_POWER', '846')).'"> kWc</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportWeeklyTargetPower').'</td><td><input class="flat width100 right" name="SAWEEKLYREPORT_WEEKLY_TARGET_POWER" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_WEEKLY_TARGET_POWER', '18')).'"> kWc</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportMeetingDuration').'</td><td><input class="flat width100 right" name="SAWEEKLYREPORT_MEETING_DURATION" value="'.dol_escape_htmltag(getDolGlobalString('SAWEEKLYREPORT_MEETING_DURATION', '15')).'"> '.$langs->trans('Minutes').'</td></tr>';
+print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportModelsSettings').'</th></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportPptxModel').'</td><td>';
+print $form->selectarray('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', array('weekly_report_standard' => 'weekly_report_standard'), getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard'), 0, 0, 0, '', 0, 0, 0, '', 'minwidth300');
+print ajax_combobox('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX');
+print '</td></tr>';
+print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportPrefillSettings').'</th></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPrefillFichinter').'</td><td>'.ajax_constantonoff('SAWEEKLYREPORT_PREFILL_FICHINTER', array(), (int) $conf->entity).'</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPrefillTicket').'</td><td>'.ajax_constantonoff('SAWEEKLYREPORT_PREFILL_TICKET', array(), (int) $conf->entity).'</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportTicketTypesToPrefill').'</td><td>';
+if (isModEnabled('ticket')) {
+	$formticket = new FormTicket($db);
+	$formticket->selectTypesTickets(getDolGlobalString('SAWEEKLYREPORT_TICKET_TYPE_CODES'), 'SAWEEKLYREPORT_TICKET_TYPE_CODES', '', 2, 0, 1, 0, 'minwidth300 maxwidth500', 1);
+	print ' <span class="opacitymedium">'.$langs->trans('SAWeeklyReportTicketTypesToPrefillHelp').'</span>';
+} else {
+	print '<span class="opacitymedium">'.$langs->trans('RequiresTicket').'</span>';
+}
+print '</td></tr>';
+print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportAgendaSettings').'</th></tr>';
+if (isModEnabled('agenda')) {
+	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaCreate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_CREATE', array(), (int) $conf->entity).'</td></tr>';
+	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaUpdate').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_UPDATE', array(), (int) $conf->entity).'</td></tr>';
+	print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportAgendaDelete').'</td><td>'.ajax_constantonoff('MAIN_AGENDA_ACTIONAUTO_SAWEEKLYREPORT_WEEKLYREPORT_DELETE', array(), (int) $conf->entity).'</td></tr>';
+} else {
+	print '<tr class="oddeven"><td colspan="2" class="opacitymedium">'.$langs->trans('RequiresAgenda').'</td></tr>';
+}
+print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('SAWeeklyReportDefaultTexts').'</th></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportSafetyMessage').'</td><td>';
+$editor = new DolEditor('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE', getDolGlobalString('SAWEEKLYREPORT_DEFAULT_SAFETY_MESSAGE'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
+print $editor->Create(1);
+print '</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('WeeklyReportVehicleLoadingReminder').'</td><td>';
+$editor = new DolEditor('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER', getDolGlobalString('SAWEEKLYREPORT_DEFAULT_LOADING_REMINDER'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
+print $editor->Create(1);
+print '</td></tr>';
+print '<tr class="oddeven"><td>'.$langs->trans('SAWeeklyReportPdfFreeText').'</td><td>';
+$editor = new DolEditor('SAWEEKLYREPORT_FREE_TEXT', getDolGlobalString('SAWEEKLYREPORT_FREE_TEXT'), '', 140, 'dolibarr_notes', 'In', false, false, isModEnabled('fckeditor'), ROWS_3, '100%');
+print $editor->Create(1);
+print '</td></tr>';
+print '</table>';
+
+print '<div class="center">';
+print '<input type="submit" class="button button-save" value="'.$langs->trans('Save').'">';
+print '</div>';
+print '</form>';
 
 print dol_get_fiche_end();
 
