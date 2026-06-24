@@ -100,6 +100,8 @@ class WeeklyReport extends CommonObject
 	public $tms;
 	public $fk_user_creat;
 	public $fk_user_modif;
+	public $user_creation_id;
+	public $user_modification_id;
 	public $last_main_doc;
 	public $import_key;
 	public $model_pdf;
@@ -211,6 +213,9 @@ class WeeklyReport extends CommonObject
 		$result = $this->fetchCommon($id, $ref, ' AND t.entity IN ('.getEntity($this->element).')', $noextrafields);
 		if ($result > 0) {
 			$this->model_pdf = $this->model_pptx;
+			$this->user_creation_id = (int) $this->fk_user_creat;
+			$this->user_modification_id = (int) $this->fk_user_modif;
+			$this->date_modification = $this->tms;
 		}
 		if ($result > 0 && empty($nolines)) {
 			$this->fetchLines();

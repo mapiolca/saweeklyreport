@@ -58,6 +58,21 @@ function saweeklyreportRenderHtmlValue($value)
 }
 
 /**
+ * Return native banner secondary reference content.
+ *
+ * @param	CommonObject	$object	Object
+ * @return	string
+ */
+function weeklyreportBannerMoreHtmlRef($object)
+{
+	if (!is_object($object) || empty($object->label)) {
+		return '';
+	}
+
+	return '<div class="refidno">'.dol_escape_htmltag((string) $object->label).'</div>';
+}
+
+/**
  * Prepare admin tabs.
  *
  * @return	array<int,array<int,string>>

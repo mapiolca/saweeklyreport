@@ -68,7 +68,8 @@ $head = weeklyreportPrepareHead($object);
 print dol_get_fiche_head($head, 'documents', $langs->trans('WeeklyReport'), -1, $object->picto);
 
 $linkback = '<a href="'.dol_buildpath('/saweeklyreport/weeklyreport_list.php', 1).'">'.$langs->trans('BackToList').'</a>';
-dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref');
+$morehtmlref = weeklyreportBannerMoreHtmlRef($object);
+dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $morehtmlref);
 
 $filearray = dol_dir_list($upload_dir, 'files', 0, '', '(\.meta|_preview.*\.png)$', $sortfield, (strtolower($sortorder) == 'desc' ? SORT_DESC : SORT_ASC), 1);
 $totalsize = 0;

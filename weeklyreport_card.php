@@ -736,7 +736,10 @@ if ($action === 'create') {
 		if (isModEnabled('agenda') && ($user->admin || $user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
 			include_once DOL_DOCUMENT_ROOT.'/core/class/html.formactions.class.php';
 			$formactions = new FormActions($db);
-			$maxevent = 10;
+			$maxevent = function_exists('getDolUserInt') ? getDolUserInt('MAIN_SIZE_SHORTLIST_LIMIT', getDolGlobalInt('MAIN_SIZE_SHORTLIST_LIMIT', 5)) : getDolGlobalInt('MAIN_SIZE_SHORTLIST_LIMIT', 5);
+			if ($maxevent <= 0) {
+				$maxevent = 5;
+			}
 			$morehtmlcenter = dolGetButtonTitle($langs->trans('SeeAll'), '', 'fa fa-bars imgforviewmode', dol_buildpath('/saweeklyreport/weeklyreport_agenda.php', 1).'?id='.((int) $object->id));
 			$typeelement = $object->element.(!empty($object->module) ? '@'.$object->module : '');
 			$formactions->showactions($object, $typeelement, 0, 1, '', $maxevent, '', $morehtmlcenter);
