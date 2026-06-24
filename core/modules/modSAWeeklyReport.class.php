@@ -34,7 +34,7 @@ class modSAWeeklyReport extends DolibarrModules
 		$this->editor_name = 'Les Métiers du Bâtiment';
 		$this->editor_url = 'lesmetiersdubatiment.fr';
 		$this->editor_squarred_logo = '';
-		$this->version = '1.1';
+		$this->version = '1.1.0';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		$this->picto = 'fa-chart-line';
 
