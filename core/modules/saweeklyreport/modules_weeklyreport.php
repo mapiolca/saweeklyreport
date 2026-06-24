@@ -18,7 +18,7 @@ abstract class ModelePDFWeeklyReport
 	 */
 	public static function liste_modeles($db, $maxfilenamelength = 0)
 	{
-		global $langs;
+		global $conf, $langs;
 
 		// phpcs:enable
 		$list = array();
@@ -29,17 +29,36 @@ abstract class ModelePDFWeeklyReport
 			$tmp = getListOfModels($db, 'weeklyreport', $maxfilenamelength);
 			if (is_array($tmp)) {
 				$list = $tmp;
+				unset($list[0]);
 				$usednativehelper = true;
 			}
 		}
-
-		$pptxmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
-		if ($pptxmodel !== '') {
-			$list[$pptxmodel] = $pptxmodel;
+		if ($usednativehelper) {
+			$sql = "SELECT nom";
+			$sql .= " FROM ".MAIN_DB_PREFIX."document_model";
+			$sql .= " WHERE type = 'weeklyreport'";
+			$sql .= " AND entity IN (0,".((int) $conf->entity).")";
+			$resql = $db->query($sql);
+			if ($resql) {
+				while (is_object($obj = $db->fetch_object($resql))) {
+					$name = (string) $obj->nom;
+					if (!isset($list[$name]) && ($name === 'weekly_report_standard' || preg_match('/^pdf_[A-Za-z0-9_]+$/', $name))) {
+						$list[$name] = $name;
+					}
+				}
+				$db->free($resql);
+			}
 		}
-		$pdfmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', (!$usednativehelper ? 'pdf_weeklyreport_powerpoint' : ''));
-		if ($pdfmodel !== '') {
-			$list[$pdfmodel] = $pdfmodel;
+
+		if (!$usednativehelper) {
+			$pptxmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PPTX', 'weekly_report_standard');
+			if ($pptxmodel !== '') {
+				$list[$pptxmodel] = $pptxmodel;
+			}
+			$pdfmodel = getDolGlobalString('SAWEEKLYREPORT_WEEKLYREPORT_ADDON_PDF', 'pdf_weeklyreport_powerpoint');
+			if ($pdfmodel !== '') {
+				$list[$pdfmodel] = $pdfmodel;
+			}
 		}
 		if (is_object($langs)) {
 			$langs->load('saweeklyreport@saweeklyreport');

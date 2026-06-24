@@ -23,7 +23,13 @@ INSERT INTO llx_c_action_trigger (code, label, description, elementtype, rang)
 VALUES ('SAWEEKLYREPORT_WEEKLYREPORT_DELETE', 'Weekly report deleted', 'Executed when a weekly report is deleted', 'weeklyreport@saweeklyreport', 450007);
 
 INSERT IGNORE INTO llx_document_model (nom, type, entity, libelle, description)
-VALUES ('weekly_report_standard', 'weeklyreport', 0, 'Weekly report PowerPoint', 'Editable PPTX weekly report template');
+VALUES ('weekly_report_standard', 'weeklyreport', 0, 'Weekly report PowerPoint', NULL);
 
 INSERT IGNORE INTO llx_document_model (nom, type, entity, libelle, description)
-VALUES ('pdf_weeklyreport_powerpoint', 'weeklyreport', 0, 'Weekly report PDF TCPDF', 'TCPDF weekly report generated from the same data as the PowerPoint document');
+VALUES ('pdf_weeklyreport_powerpoint', 'weeklyreport', 0, 'Weekly report PDF TCPDF', NULL);
+
+UPDATE llx_document_model
+SET description = NULL
+WHERE type = 'weeklyreport'
+AND nom IN ('weekly_report_standard', 'pdf_weeklyreport_powerpoint')
+AND description IN ('Editable PPTX weekly report template', 'TCPDF weekly report generated from the same data as the PowerPoint document');
