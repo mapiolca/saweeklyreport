@@ -28,6 +28,39 @@ require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';
 dol_include_once('/saweeklyreport/class/weeklyreport.class.php');
 dol_include_once('/saweeklyreport/lib/saweeklyreport.lib.php');
 
+/**
+ * Render agenda dates with a Dolibarr-native fallback for environments without dolOutputDates().
+ *
+ * @param	int|string|null	$datep			Start date timestamp or SQL date
+ * @param	int|string|null	$datef			End date timestamp or SQL date
+ * @param	int				$fulldayevent	Full day event
+ * @return	string
+ */
+function saweeklyreportAgendaOutputDates($datep, $datef = null, $fulldayevent = 0)
+{
+	if (function_exists('dolOutputDates')) {
+		return dolOutputDates($datep, $datef, $fulldayevent, 0, '', 'tzuserrel', 1);
+	}
+
+	if (empty($datep) && empty($datef)) {
+		return '';
+	}
+
+	$format = !empty($fulldayevent) ? 'day' : 'dayhour';
+	$out = '';
+	if (!empty($datep)) {
+		$out = dol_print_date($datep, $format, 'tzuserrel');
+	}
+	if (!empty($datef) && $datef != $datep) {
+		$datefoutput = dol_print_date($datef, $format, 'tzuserrel');
+		if ($datefoutput !== '') {
+			$out .= ($out !== '' ? ' - ' : '').$datefoutput;
+		}
+	}
+
+	return $out;
+}
+
 $langs->loadLangs(array('saweeklyreport@saweeklyreport', 'agenda', 'other'));
 
 $id = GETPOSTINT('id');
@@ -381,7 +414,7 @@ if ($resql) {
 			print '<td></td>';
 		}
 		print '<td class="nowraponall">'.$actionstatic->getNomUrl(1, -1).'</td>';
-		print '<td class="center nowraponall nopaddingtopimp nopaddingbottomimp">'.dolOutputDates($datep, $datef, (int) $obj->fulldayevent, 0, '', 'tzuserrel', 1).'</td>';
+		print '<td class="center nowraponall nopaddingtopimp nopaddingbottomimp">'.saweeklyreportAgendaOutputDates($datep, $datef, (int) $obj->fulldayevent).'</td>';
 		print '<td class="tdoverflowmax125">';
 		if ((int) $obj->user_id > 0) {
 			if (!isset($userlinkcache[(int) $obj->user_id])) {
